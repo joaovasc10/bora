@@ -9,7 +9,3 @@ class AccountsConfig(AppConfig):
 
     def ready(self):
         import apps.accounts.signals  # noqa: F401
-    label = "accounts"
-
-    def ready(self):
-        import apps.accounts.signals  # noqa — registers signal handlers
