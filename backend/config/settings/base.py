@@ -203,7 +203,7 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_EMAIL_VERIFICATION = "optional"
+ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_ADAPTER = "apps.accounts.adapters.CustomAccountAdapter"
 
 SOCIALACCOUNT_PROVIDERS = {
@@ -240,7 +240,13 @@ REST_AUTH = {
 # ----------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:8080"],
+    default=[
+        "http://localhost",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1",
+        "http://127.0.0.1:8080",
+    ],
 )
 CORS_ALLOW_CREDENTIALS = True
 

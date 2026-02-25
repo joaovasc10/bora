@@ -44,6 +44,7 @@ class EventGeoSerializer(GeoFeatureModelSerializer):
     Properties include all display fields; geometry is the `location` PointField.
     """
 
+    id = serializers.UUIDField(read_only=True)
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     city = CitySerializer(read_only=True)

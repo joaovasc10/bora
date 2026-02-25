@@ -33,7 +33,7 @@ class SecurityHeadersMiddleware:
         # Content-Security-Policy — adjust per deployment
         response["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://api.mapbox.com https://cdn.jsdelivr.net; "
+            "script-src 'self' 'unsafe-inline' https://api.mapbox.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
             "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://api.tiles.mapbox.com https://cdn.tailwindcss.com; "
             "img-src 'self' data: blob: https://*.mapbox.com https://*.amazonaws.com; "
             "connect-src 'self' https://api.mapbox.com https://events.mapbox.com wss://api.mapbox.com; "
