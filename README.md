@@ -1,4 +1,4 @@
-# POA Eventos 📍
+# Bora POA 📍
 
 **Mapa colaborativo e interativo de eventos urbanos em Porto Alegre.**
 
