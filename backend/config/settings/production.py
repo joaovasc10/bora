@@ -6,6 +6,11 @@ env = environ.Env()
 
 DEBUG = False
 
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+
+# Railway terminates SSL at the load balancer; trust the forwarded header
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # ----------------------------------------------------------------
 # Security
 # ----------------------------------------------------------------
@@ -21,8 +26,15 @@ CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
 # ----------------------------------------------------------------
-# Static / Media — S3
+# Static / Media — WhiteNoise (default) or S3
 # ----------------------------------------------------------------
+
+# WhiteNoise serves the frontend SPA at the web root
+WHITENOISE_ROOT = BASE_DIR / "frontend"  # noqa
+WHITENOISE_INDEX_FILE = True
+WHITENOISE_MAX_AGE = 86400
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 USE_S3 = env.bool("USE_S3", default=False)
 
 if USE_S3:
