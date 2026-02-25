@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POA Eventos — Mapa Colaborativo de Eventos</title>
+  <meta name="description" content="Descubra e publique eventos em Porto Alegre no mapa interativo colaborativo." />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="POA Eventos" />
+  <meta property="og:description" content="Mapa colaborativo de eventos em Porto Alegre." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://poaeventos.com.br" />
+
+  <!-- Mapbox GL JS -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+  <!-- Three.js (ES Module via CDN) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js"
+    }
+  }
+  </script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#3B82F6', dark: '#1D4ED8' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body class="dark bg-gray-950 text-gray-100 h-screen overflow-hidden flex">
+
+  <!-- ============================================================ -->
+  <!-- LEFT SIDEBAR                                                   -->
+  <!-- ============================================================ -->
+  <aside id="sidebar-left"
+    class="w-72 min-w-[18rem] flex flex-col bg-gray-900 border-r border-gray-800 z-10 overflow-y-auto transition-transform duration-300">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+      <span class="text-2xl">📍</span>
+      <div>
+        <h1 class="font-bold text-lg leading-none">POA Eventos</h1>
+        <p class="text-xs text-gray-400">Mapa colaborativo</p>
+      </div>
+    </div>
+
+    <!-- Add event button -->
+    <div class="px-4 py-3 border-b border-gray-800">
+      <button id="btn-new-event"
+        class="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+        <span>📍</span> Pinar meu evento
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="px-4 py-3 border-b border-gray-800">
+      <div class="relative">
+        <input id="search-input" type="search" placeholder="Buscar eventos..."
+          class="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 pl-9 pr-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-brand" />
+        <span class="absolute left-3 top-2.5 text-gray-500 text-sm">🔍</span>
+      </div>
+    </div>
+
+    <!-- Date filters -->
+    <div class="px-4 py-3 border-b border-gray-800">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Data</p>
+      <div class="flex flex-wrap gap-1">
+        <button data-date-filter="today"
+          class="date-filter-btn text-xs px-2 py-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">
+          Hoje
+        </button>
+        <button data-date-filter="weekend"
+          class="date-filter-btn text-xs px-2 py-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">
+          Fim de semana
+        </button>
+        <button data-date-filter="week"
+          class="date-filter-btn text-xs px-2 py-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">
+          Esta semana
+        </button>
+      </div>
+      <input id="custom-date" type="date"
+        class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg py-1.5 px-3 text-sm text-gray-100 focus:outline-none focus:border-brand" />
+    </div>
+
+    <!-- Free only toggle -->
+    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+      <span class="text-sm text-gray-300">Apenas gratuitos</span>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input id="toggle-free" type="checkbox" class="sr-only peer" />
+        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+      </label>
+    </div>
+
+    <!-- Category filters -->
+    <div class="px-4 py-3 flex-1">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Categorias</p>
+      <div id="category-filters" class="space-y-1">
+        <!-- Populated by filters.js -->
+        <p class="text-xs text-gray-500">Carregando...</p>
+      </div>
+    </div>
+
+    <!-- Auth section -->
+    <div class="px-4 py-3 border-t border-gray-800">
+      <div id="auth-section">
+        <!-- Populated by auth.js -->
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================================================ -->
+  <!-- MAP                                                           -->
+  <!-- ============================================================ -->
+  <main class="flex-1 relative">
+    <div id="map" class="w-full h-full"></div>
+
+    <!-- Map loading overlay -->
+    <div id="map-loading"
+      class="absolute inset-0 bg-gray-950 flex items-center justify-center z-20 transition-opacity duration-500">
+      <div class="text-center">
+        <div class="text-4xl mb-2 animate-bounce">📍</div>
+        <p class="text-gray-400">Carregando mapa...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================ -->
+  <!-- RIGHT SIDEBAR — Event Detail                                  -->
+  <!-- ============================================================ -->
+  <aside id="sidebar-right"
+    class="w-96 min-w-[24rem] flex flex-col bg-gray-900 border-l border-gray-800 z-10 overflow-y-auto transform translate-x-full transition-transform duration-300">
+    <div id="event-detail-content" class="flex-1">
+      <!-- Populated by events.js -->
+    </div>
+  </aside>
+
+  <!-- ============================================================ -->
+  <!-- MODAL — Create Event                                          -->
+  <!-- ============================================================ -->
+  <div id="modal-overlay"
+    class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div id="modal-create-event"
+      class="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700">
+
+      <!-- Modal header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
+        <h2 class="text-xl font-bold">📍 Novo Evento</h2>
+        <button id="btn-close-modal"
+          class="text-gray-400 hover:text-white text-2xl leading-none transition">×</button>
+      </div>
+
+      <!-- Form -->
+      <form id="form-create-event" class="px-6 py-4 space-y-4" novalidate>
+
+        <!-- Title -->
+        <div>
+          <label class="form-label">Título do evento *</label>
+          <input name="title" type="text" maxlength="120" required
+            class="form-input" placeholder="Ex: Show do Grupo Molejo" />
+          <p class="form-error hidden"></p>
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label class="form-label">Categoria *</label>
+          <select name="category" required class="form-input">
+            <option value="">Selecione uma categoria...</option>
+          </select>
+          <p class="form-error hidden"></p>
+        </div>
+
+        <!-- Location picker -->
+        <div>
+          <label class="form-label">Localização * — clique no mini-mapa ou busque</label>
+          <div class="flex gap-2 mb-2">
+            <input id="location-search" type="text"
+              class="form-input flex-1" placeholder="Buscar endereço..." />
+            <button type="button" id="btn-use-current-location"
+              class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition" title="Usar minha localização">
+              📌
+            </button>
+          </div>
+          <div id="mini-map" class="w-full h-48 rounded-lg overflow-hidden border border-gray-700"></div>
+          <input type="hidden" name="lat" id="selected-lat" />
+          <input type="hidden" name="lng" id="selected-lng" />
+          <p class="form-error hidden" id="location-error"></p>
+        </div>
+
+        <!-- Address -->
+        <div>
+          <label class="form-label">Endereço</label>
+          <input name="address" type="text" class="form-input"
+            placeholder="Preenchido automaticamente via geocoding..." />
+        </div>
+
+        <!-- Neighborhood -->
+        <div>
+          <label class="form-label">Bairro</label>
+          <input name="neighborhood" type="text" class="form-input" placeholder="Ex: Moinhos de Vento" />
+        </div>
+
+        <!-- Organizer -->
+        <div>
+          <label class="form-label">Nome do organizador *</label>
+          <input name="organizer_name" type="text" required class="form-input"
+            placeholder="Nome da banda, empresa, coletivo..." />
+          <p class="form-error hidden"></p>
+        </div>
+
+        <!-- Date/time row -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="form-label">Início *</label>
+            <input name="start_datetime" type="datetime-local" required class="form-input" />
+            <p class="form-error hidden"></p>
+          </div>
+          <div>
+            <label class="form-label">Fim (opcional)</label>
+            <input name="end_datetime" type="datetime-local" class="form-input" />
+          </div>
+        </div>
+
+        <!-- Free / Paid -->
+        <div class="flex items-center gap-4">
+          <span class="form-label mb-0">É gratuito? *</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input id="form-toggle-free" type="checkbox" name="is_free" class="sr-only peer" checked />
+            <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+          </label>
+        </div>
+
+        <div id="price-info-field" class="hidden">
+          <label class="form-label">Informações de preço</label>
+          <input name="price_info" type="text" class="form-input"
+            placeholder="Ex: R$ 50, meia pra estudantes" />
+        </div>
+
+        <!-- Links -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="form-label">Instagram</label>
+            <input name="instagram_url" type="url" class="form-input" placeholder="https://instagram.com/..." />
+          </div>
+          <div>
+            <label class="form-label">Link de ingressos</label>
+            <input name="ticket_url" type="url" class="form-input" placeholder="https://sympla.com.br/..." />
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="form-label">Descrição <span class="text-gray-500 text-xs">(máx. 500 caracteres)</span></label>
+          <textarea name="description" rows="3" maxlength="500" class="form-input resize-y"
+            placeholder="O que rola no evento? Atrações, dicas..."></textarea>
+          <p class="text-xs text-gray-500 text-right mt-1"><span id="desc-count">0</span>/500</p>
+        </div>
+
+        <!-- Cover image -->
+        <div>
+          <label class="form-label">Imagem de capa</label>
+          <input name="cover_image" id="cover-image-input" type="file" accept="image/*" class="hidden" />
+          <div id="cover-preview"
+            class="w-full h-36 bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center cursor-pointer hover:border-brand transition"
+            onclick="document.getElementById('cover-image-input').click()">
+            <div class="text-center">
+              <p class="text-3xl">🖼️</p>
+              <p class="text-sm text-gray-400 mt-1">Clique para enviar (máx. 5 MB)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tags -->
+        <div>
+          <label class="form-label">Tags</label>
+          <input name="tags" id="tags-input" type="text" class="form-input"
+            placeholder="Adicione tags e pressione Enter..." />
+          <div id="tags-container" class="flex flex-wrap gap-1 mt-1"></div>
+        </div>
+
+        <!-- Capacity -->
+        <div>
+          <label class="form-label">Capacidade máxima (opcional)</label>
+          <input name="max_capacity" type="number" min="1" class="form-input" placeholder="Ex: 500" />
+        </div>
+
+        <!-- Submit -->
+        <div class="pt-2 pb-4">
+          <div id="form-error-global" class="hidden bg-red-900/60 border border-red-700 rounded-lg px-4 py-2 text-sm text-red-300 mb-3"></div>
+          <button type="submit" id="btn-submit-event"
+            class="w-full bg-brand hover:bg-brand-dark text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2">
+            <span id="submit-spinner" class="hidden animate-spin">⟳</span>
+            <span id="submit-label">📍 Publicar evento no mapa</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Toast notifications                                           -->
+  <!-- ============================================================ -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2"></div>
+
+  <!-- ============================================================ -->
+  <!-- Scripts (ES Modules)                                          -->
+  <!-- ============================================================ -->
+  <script type="module" src="src/auth.js"></script>
+  <script type="module" src="src/map.js"></script>
+  <script type="module" src="src/pins.js"></script>
+  <script type="module" src="src/events.js"></script>
+  <script type="module" src="src/filters.js"></script>
+  <script type="module" src="src/app.js"></script>
+
+</body>
+</html>
