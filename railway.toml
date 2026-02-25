@@ -8,6 +8,6 @@ dockerfilePath = "Dockerfile.railway"
 [deploy]
 startCommand = "/app/scripts/start-web.sh"
 healthcheckPath = "/health/"
-healthcheckTimeout = 300
+healthcheckTimeout = 600
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
