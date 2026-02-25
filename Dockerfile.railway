@@ -1,0 +1,50 @@
+# ================================================================
+# POA Eventos — Production Dockerfile for Railway
+#
+# Single container: Django (gunicorn) + frontend (WhiteNoise)
+# Use this Dockerfile for the web service AND for celery
+# services (override the start command per service).
+# ================================================================
+FROM python:3.12-slim
+
+# System dependencies for GeoDjango / Pillow / psycopg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    binutils \
+    libproj-dev \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libpq-dev \
+    gcc \
+    g++ \
+    gettext \
+    curl \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    GDAL_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgdal.so \
+    GEOS_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgeos_c.so \
+    DJANGO_SETTINGS_MODULE=config.settings.production
+
+WORKDIR /app
+
+# Install Python deps first (cached layer)
+COPY backend/requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+
+# Copy Django backend
+COPY backend/ .
+
+# Copy frontend — WhiteNoise serves it at web root (/)
+COPY frontend/ ./frontend/
+
+# Copy helper scripts
+COPY scripts/ ./scripts/
+RUN chmod +x ./scripts/*.sh
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
