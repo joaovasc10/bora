@@ -1,0 +1,126 @@
+/* POA Eventos — main.css (supplements Tailwind) */
+
+/* ---------------------------------------------------------------- */
+/* Form helpers                                                       */
+/* ---------------------------------------------------------------- */
+.form-label {
+  @apply block text-sm font-medium text-gray-300 mb-1;
+}
+
+.form-input {
+  @apply w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-3
+         text-sm text-gray-100 placeholder-gray-500
+         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+         transition;
+  color: #f3f4f6 !important;
+  background-color: #1f2937 !important;
+  color-scheme: dark;
+}
+
+textarea.form-input {
+  @apply min-h-[80px];
+}
+
+.form-error {
+  @apply text-xs text-red-400 mt-1;
+}
+
+/* ---------------------------------------------------------------- */
+/* Map container                                                      */
+/* ---------------------------------------------------------------- */
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+/* Mapbox attribution dark override */
+.mapboxgl-ctrl-attrib {
+  background-color: rgba(17, 24, 39, 0.8) !important;
+}
+.mapboxgl-ctrl-attrib a {
+  color: #9ca3af !important;
+}
+
+/* ---------------------------------------------------------------- */
+/* DOM Pin Markers                                                    */
+/* ---------------------------------------------------------------- */
+.map-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  transition: transform 0.15s ease;
+}
+
+.map-pin:hover,
+.map-pin--hover {
+  transform: scale(1.25) translateY(-4px);
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,0.7));
+}
+
+.map-pin-head {
+  width: 36px;
+  height: 36px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.map-pin-icon {
+  transform: rotate(45deg);
+  font-size: 16px;
+  line-height: 1;
+  display: block;
+}
+
+.map-pin-needle {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 10px solid #3B82F6; /* overridden inline */
+  margin-top: -2px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Event tag chips                                                    */
+/* ---------------------------------------------------------------- */
+.event-tag {
+  @apply inline-block bg-gray-800 text-gray-300 text-xs rounded-full px-2 py-0.5;
+}
+
+/* ---------------------------------------------------------------- */
+/* Toast notifications                                               */
+/* ---------------------------------------------------------------- */
+.toast {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl
+         bg-gray-900 border text-sm text-gray-100
+         transition-all duration-300;
+  min-width: 280px;
+  max-width: 420px;
+}
+.toast.success { @apply border-green-600; }
+.toast.error   { @apply border-red-600; }
+.toast.info    { @apply border-blue-600; }
+
+/* ---------------------------------------------------------------- */
+/* Scrollbar                                                         */
+/* ---------------------------------------------------------------- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+
+/* ---------------------------------------------------------------- */
+/* Modal overlay                                                      */
+/* ---------------------------------------------------------------- */
+#modal-overlay {
+  display: none;
+}
+#modal-overlay.open {
+  display: flex;
+}
