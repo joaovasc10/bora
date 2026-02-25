@@ -11,10 +11,9 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
 # Railway terminates SSL at the load balancer; trust the forwarded header
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# ----------------------------------------------------------------
-# Security
-# ----------------------------------------------------------------
-SECURE_SSL_REDIRECT = True
+# Do NOT redirect HTTP→HTTPS inside Django — Railway's proxy already enforces
+# it externally, and the internal healthcheck probe uses plain HTTP.
+SECURE_SSL_REDIRECT = False
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -24,6 +23,18 @@ X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
+
+# ----------------------------------------------------------------
+# Database — Railway injects DATABASE_URL as postgresql://, GeoDjango
+# requires the postgis:// scheme.  Re-write it here before Django uses it.
+# ----------------------------------------------------------------
+_raw_db = env("DATABASE_URL", default="")
+if _raw_db and not _raw_db.startswith("postgis://"):
+    _raw_db = _raw_db.replace("postgresql://", "postgis://", 1).replace("postgres://", "postgis://", 1)
+
+if _raw_db:
+    DATABASES = {"default": env.db_url_config(_raw_db)}
+    DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
 # ----------------------------------------------------------------
 # Static / Media — WhiteNoise (default) or S3

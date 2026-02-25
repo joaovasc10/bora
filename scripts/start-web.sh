@@ -11,12 +11,12 @@ import os, re, psycopg2
 
 db_url = os.environ.get('DATABASE_URL', '')
 db_url = re.sub(r'^postgis://', 'postgresql://', db_url)
+db_url = re.sub(r'^postgres://', 'postgresql://', db_url)
 
 conn = psycopg2.connect(db_url)
 conn.autocommit = True
 with conn.cursor() as cur:
     cur.execute('CREATE EXTENSION IF NOT EXISTS postgis;')
-    cur.execute('CREATE EXTENSION IF NOT EXISTS postgis_topology;')
 conn.close()
 print('PostGIS ready')
 "
