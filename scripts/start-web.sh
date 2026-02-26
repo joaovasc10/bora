@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ================================================================
 # Web service start script — Railway
 # ================================================================
@@ -45,17 +45,24 @@ except Exception as e:
 fi
 
 # ----------------------------------------------------------------
-# 2. Wait for DB, then migrate
+# 2. Collect static files (always — does not need DB)
 # ----------------------------------------------------------------
-echo "--- Waiting for database ---"
-python -c "
+echo "--- Collecting static files ---"
+python manage.py collectstatic --noinput --clear
+
+# ----------------------------------------------------------------
+# 3. Wait for DB and run migrations (only if DB is linked)
+# ----------------------------------------------------------------
+if [ -z "$DATABASE_URL" ]; then
+  echo "WARNING: DATABASE_URL not set — skipping migrate."
+  echo "Link the Postgres plugin to this service in Railway and redeploy."
+else
+  echo "--- Waiting for database ---"
+  echo "    DATABASE_URL prefix: ${DATABASE_URL:0:40}..."
+  python -c "
 import os, re, time, psycopg2, sys
 
 db_url = os.environ.get('DATABASE_URL', '')
-if not db_url:
-    print('DATABASE_URL not set, skipping wait.', file=sys.stderr)
-    sys.exit(0)
-
 db_url = re.sub(r'^postgis://', 'postgresql://', db_url)
 db_url = re.sub(r'^postgres://', 'postgresql://', db_url)
 
@@ -69,16 +76,13 @@ for attempt in range(1, 16):
         print(f'Attempt {attempt}/15 — not ready: {e}', file=sys.stderr)
         time.sleep(4)
 
-print('ERROR: database never became available.', file=sys.stderr)
+print('ERROR: database never became available after 60s.', file=sys.stderr)
 sys.exit(1)
-"
+" || { echo "WARNING: DB wait timed out — starting anyway."; }
 
-echo "--- Running migrations ---"
-echo "    DATABASE_URL prefix: ${DATABASE_URL:0:40}..."
-python manage.py migrate --noinput
-
-echo "--- Collecting static files ---"
-python manage.py collectstatic --noinput --clear
+  echo "--- Running migrations ---"
+  python manage.py migrate --noinput || echo "WARNING: migrate failed — check DB connection."
+fi
 
 echo "--- Starting gunicorn ---"
 exec gunicorn config.wsgi:application \
