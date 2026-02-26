@@ -36,7 +36,7 @@ if not _secret:
     )
 SECRET_KEY = _secret
 DEBUG = env("DEBUG")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", ".up.railway.app"])
 
 # ----------------------------------------------------------------
 # Application definition
@@ -263,6 +263,9 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://127.0.0.1:8080",
     ],
 )
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.up\.railway\.app$",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # ----------------------------------------------------------------
