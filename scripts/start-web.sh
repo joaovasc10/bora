@@ -1,31 +1,70 @@
 #!/bin/sh
 # ================================================================
 # Web service start script — Railway
-# Enables PostGIS, runs migrations, collects static, starts gunicorn
 # ================================================================
 set -e
 
-echo "--- Enabling PostGIS extension ---"
-python -c "
-import os, re, psycopg2
+# ----------------------------------------------------------------
+# 1. Enable PostGIS (non-fatal: DB plugin might not be linked yet)
+# ----------------------------------------------------------------
+if [ -z "$DATABASE_URL" ]; then
+  echo "WARNING: DATABASE_URL is not set."
+  echo "  -> Add the PostgreSQL plugin in Railway and link it to this service."
+else
+  echo "--- Enabling PostGIS extension ---"
+  python -c "
+import os, re, psycopg2, sys
 
 db_url = os.environ.get('DATABASE_URL', '')
 db_url = re.sub(r'^postgis://', 'postgresql://', db_url)
 db_url = re.sub(r'^postgres://', 'postgresql://', db_url)
 
-conn = psycopg2.connect(db_url)
-conn.autocommit = True
-with conn.cursor() as cur:
-    cur.execute('CREATE EXTENSION IF NOT EXISTS postgis;')
-conn.close()
-print('PostGIS ready')
+try:
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute('CREATE EXTENSION IF NOT EXISTS postgis;')
+    conn.close()
+    print('PostGIS ready')
+except Exception as e:
+    print(f'WARNING: could not enable PostGIS: {e}', file=sys.stderr)
+" || true
+fi
+
+# ----------------------------------------------------------------
+# 2. Wait for DB, then migrate
+# ----------------------------------------------------------------
+echo "--- Waiting for database ---"
+python -c "
+import os, re, time, psycopg2, sys
+
+db_url = os.environ.get('DATABASE_URL', '')
+if not db_url:
+    print('DATABASE_URL not set, skipping wait.', file=sys.stderr)
+    sys.exit(0)
+
+db_url = re.sub(r'^postgis://', 'postgresql://', db_url)
+db_url = re.sub(r'^postgres://', 'postgresql://', db_url)
+
+for attempt in range(1, 16):
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.close()
+        print(f'Database ready (attempt {attempt})')
+        sys.exit(0)
+    except psycopg2.OperationalError as e:
+        print(f'Attempt {attempt}/15 — not ready: {e}', file=sys.stderr)
+        time.sleep(4)
+
+print('ERROR: database never became available.', file=sys.stderr)
+sys.exit(1)
 "
 
 echo "--- Running migrations ---"
 python manage.py migrate --noinput
 
 echo "--- Collecting static files ---"
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
 
 echo "--- Starting gunicorn ---"
 exec gunicorn config.wsgi:application \
