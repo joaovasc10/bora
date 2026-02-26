@@ -25,16 +25,28 @@ CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
 # ----------------------------------------------------------------
-# Database — Railway injects DATABASE_URL as postgresql://, GeoDjango
-# requires the postgis:// scheme.  Re-write it here before Django uses it.
+# Database — Railway injects DATABASE_URL as postgresql://.
+# Parse manually with urllib to avoid django-environ scheme issues.
+# Railway Postgres also requires sslmode=require.
 # ----------------------------------------------------------------
-_raw_db = env("DATABASE_URL", default="")
-if _raw_db and not _raw_db.startswith("postgis://"):
-    _raw_db = _raw_db.replace("postgresql://", "postgis://", 1).replace("postgres://", "postgis://", 1)
+import os as _os
+from urllib.parse import urlparse as _urlparse
 
-if _raw_db:
-    DATABASES = {"default": env.db_url_config(_raw_db)}
-    DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
+_db_url = _os.environ.get("DATABASE_URL", "")
+if _db_url:
+    _u = _urlparse(_db_url)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.contrib.gis.db.backends.postgis",
+            "NAME": _u.path.lstrip("/"),
+            "USER": _u.username or "",
+            "PASSWORD": _u.password or "",
+            "HOST": _u.hostname or "",
+            "PORT": str(_u.port or 5432),
+            "OPTIONS": {"sslmode": "require"},
+            "CONN_MAX_AGE": 60,
+        }
+    }
 
 # ----------------------------------------------------------------
 # Static / Media — WhiteNoise (default) or S3
