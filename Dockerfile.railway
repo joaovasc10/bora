@@ -1,5 +1,6 @@
 # ================================================================
 # POA Eventos — Production Dockerfile for Railway
+# build-bust: 2026-02-26
 #
 # Single container: Django (gunicorn) + frontend (WhiteNoise)
 # Use this Dockerfile for the web service AND for celery
