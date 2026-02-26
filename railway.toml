@@ -9,5 +9,10 @@ dockerfilePath = "Dockerfile.railway"
 startCommand = "/app/scripts/start-web.sh"
 healthcheckPath = "/health/"
 healthcheckTimeout = 600
+numReplicas = 1
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
+# Expose the PORT Railway injects so the service gets a public domain.
+# After first deploy: Railway dashboard > service > Settings > Networking
+# > Generate Domain (or add a custom domain).
