@@ -74,6 +74,7 @@ sys.exit(1)
 "
 
 echo "--- Running migrations ---"
+echo "    DATABASE_URL prefix: ${DATABASE_URL:0:40}..."
 python manage.py migrate --noinput
 
 echo "--- Collecting static files ---"

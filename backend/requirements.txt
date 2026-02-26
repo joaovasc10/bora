@@ -37,6 +37,7 @@ python-slugify==8.0.4
 
 # --- WSGI server ---
 gunicorn==22.0.0
+dj-database-url==2.1.0
 
 # --- Logging ---
 structlog==24.1.0
