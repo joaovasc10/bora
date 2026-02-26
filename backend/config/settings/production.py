@@ -27,20 +27,30 @@ CSRF_COOKIE_HTTPONLY = True
 # ----------------------------------------------------------------
 # Database — Railway injects DATABASE_URL as postgresql://.
 # dj-database-url is the Railway-recommended parser.
+# Special chars in passwords (e.g. #) are percent-encoded before parsing.
 # ----------------------------------------------------------------
 import os as _os
+import sys as _sys
+from urllib.parse import urlparse as _up, quote as _quote, urlunparse as _unparse
 import dj_database_url as _dj_db
 
 _db_url = _os.environ.get("DATABASE_URL", "")
 if _db_url:
-    # Sanitise for log (hide password)
+    # Percent-encode password to handle special chars like # @ ? /
     try:
-        from urllib.parse import urlparse as _up
         _pu = _up(_db_url)
+        if _pu.password:
+            _encoded_pass = _quote(_pu.password, safe="")
+            # Reconstruct netloc with encoded password
+            _netloc = f"{_pu.username}:{_encoded_pass}@{_pu.hostname}"
+            if _pu.port:
+                _netloc += f":{_pu.port}"
+            _db_url = _unparse((_pu.scheme, _netloc, _pu.path, _pu.params, _pu.query, _pu.fragment))
         _safe = f"{_pu.scheme}://{_pu.username}:***@{_pu.hostname}:{_pu.port}{_pu.path}"
-    except Exception:
+    except Exception as _e:
         _safe = _db_url[:30] + "..."
-    import sys as _sys
+        print(f"[settings] WARNING: could not re-encode DATABASE_URL: {_e}", file=_sys.stderr)
+
     print(f"[settings] DATABASE_URL detected: {_safe}", file=_sys.stderr)
 
     _parsed = _dj_db.parse(_db_url, conn_max_age=60, ssl_require=True)
@@ -56,7 +66,7 @@ else:
     print(
         "[settings] WARNING: DATABASE_URL is empty — using base.py default (localhost). "
         "Set DATABASE_URL in Railway Variables.",
-        file=__import__('sys').stderr,
+        file=_sys.stderr,
     )
 
 # ----------------------------------------------------------------
