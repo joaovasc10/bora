@@ -26,27 +26,38 @@ CSRF_COOKIE_HTTPONLY = True
 
 # ----------------------------------------------------------------
 # Database — Railway injects DATABASE_URL as postgresql://.
-# Parse manually with urllib to avoid django-environ scheme issues.
-# Railway Postgres also requires sslmode=require.
+# dj-database-url is the Railway-recommended parser.
 # ----------------------------------------------------------------
 import os as _os
-from urllib.parse import urlparse as _urlparse
+import dj_database_url as _dj_db
 
 _db_url = _os.environ.get("DATABASE_URL", "")
 if _db_url:
-    _u = _urlparse(_db_url)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.contrib.gis.db.backends.postgis",
-            "NAME": _u.path.lstrip("/"),
-            "USER": _u.username or "",
-            "PASSWORD": _u.password or "",
-            "HOST": _u.hostname or "",
-            "PORT": str(_u.port or 5432),
-            "OPTIONS": {"sslmode": "require"},
-            "CONN_MAX_AGE": 60,
-        }
-    }
+    # Sanitise for log (hide password)
+    try:
+        from urllib.parse import urlparse as _up
+        _pu = _up(_db_url)
+        _safe = f"{_pu.scheme}://{_pu.username}:***@{_pu.hostname}:{_pu.port}{_pu.path}"
+    except Exception:
+        _safe = _db_url[:30] + "..."
+    import sys as _sys
+    print(f"[settings] DATABASE_URL detected: {_safe}", file=_sys.stderr)
+
+    _parsed = _dj_db.parse(_db_url, conn_max_age=60, ssl_require=True)
+    if not _parsed.get("NAME"):
+        print(
+            f"[settings] ERROR: dj-database-url could not parse NAME from: {_safe}",
+            file=_sys.stderr,
+        )
+    else:
+        DATABASES = {"default": _parsed}
+        DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
+else:
+    print(
+        "[settings] WARNING: DATABASE_URL is empty — using base.py default (localhost). "
+        "Set DATABASE_URL in Railway Variables.",
+        file=__import__('sys').stderr,
+    )
 
 # ----------------------------------------------------------------
 # Static / Media — WhiteNoise (default) or S3
