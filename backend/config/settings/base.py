@@ -21,7 +21,20 @@ environ.Env.read_env(BASE_DIR.parent / ".env")
 # ----------------------------------------------------------------
 # Security
 # ----------------------------------------------------------------
-SECRET_KEY = env("SECRET_KEY")
+# SECRET_KEY MUST be set via environment variable in production.
+# The fallback below is intentionally insecure and only prevents a
+# crash during the build / collectstatic step when the var is absent.
+# Railway: Settings > Variables > add SECRET_KEY
+import warnings as _warnings
+_secret = env("SECRET_KEY", default="")
+if not _secret:
+    _secret = "insecure-fallback-set-SECRET_KEY-in-railway-variables"
+    _warnings.warn(
+        "SECRET_KEY is not set! Using an insecure default. "
+        "Add SECRET_KEY in Railway Variables.",
+        stacklevel=2,
+    )
+SECRET_KEY = _secret
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 

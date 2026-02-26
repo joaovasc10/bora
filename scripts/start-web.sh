@@ -5,12 +5,25 @@
 set -e
 
 # ----------------------------------------------------------------
+# 0. Pre-flight: warn loudly about missing critical variables
+# ----------------------------------------------------------------
+MISSING=""
+[ -z "$SECRET_KEY" ]    && MISSING="$MISSING\n  - SECRET_KEY"
+[ -z "$DATABASE_URL" ]  && MISSING="$MISSING\n  - DATABASE_URL"
+
+if [ -n "$MISSING" ]; then
+  echo "================================================================"
+  echo "WARNING: The following environment variables are NOT set:"
+  printf "%b\n" "$MISSING"
+  echo "Set them in Railway: service > Variables tab."
+  echo "The app will try to start but may not function correctly."
+  echo "================================================================"
+fi
+
+# ----------------------------------------------------------------
 # 1. Enable PostGIS (non-fatal: DB plugin might not be linked yet)
 # ----------------------------------------------------------------
-if [ -z "$DATABASE_URL" ]; then
-  echo "WARNING: DATABASE_URL is not set."
-  echo "  -> Add the PostgreSQL plugin in Railway and link it to this service."
-else
+if [ -n "$DATABASE_URL" ]; then
   echo "--- Enabling PostGIS extension ---"
   python -c "
 import os, re, psycopg2, sys
