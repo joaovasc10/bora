@@ -53,7 +53,9 @@ if _db_url:
 
     print(f"[settings] DATABASE_URL detected: {_safe}", file=_sys.stderr)
 
-    _parsed = _dj_db.parse(_db_url, conn_max_age=60, ssl_require=True)
+    # ssl_require=False: custom PostGIS container on Railway private network
+    # does not have SSL configured (internal traffic, no SSL needed).
+    _parsed = _dj_db.parse(_db_url, conn_max_age=60, ssl_require=False)
     if not _parsed.get("NAME"):
         print(
             f"[settings] ERROR: dj-database-url could not parse NAME from: {_safe}",
