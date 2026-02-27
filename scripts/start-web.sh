@@ -114,6 +114,40 @@ if not Category.objects.exists():
 else:
     print('Categories already seeded, skipping.')
 " || echo "WARNING: seed_categories failed."
+
+  # ----------------------------------------------------------------
+  # 5. Create superuser from env vars (if provided and not exists)
+  # ----------------------------------------------------------------
+  if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo "--- Creating superuser (if needed) ---"
+    python -c "
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
+django.setup()
+from django.contrib.auth.models import User
+from apps.accounts.models import User as CustomUser
+
+email = os.environ.get('DJANGO_SUPERUSER_EMAIL', '')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', '')
+username = os.environ.get('DJANGO_SUPERUSER_USERNAME', email.split('@')[0] if email else 'admin')
+
+if not CustomUser.objects.filter(email=email).exists():
+    print(f'Creating superuser: {username} ({email})')
+    try:
+        user = CustomUser.objects.create_superuser(
+            username=username,
+            email=email,
+            password=password
+        )
+        print(f'Superuser created successfully: {user.email}')
+    except Exception as e:
+        print(f'WARNING: could not create superuser: {e}', flush=True)
+else:
+    print(f'Superuser {email} already exists, skipping.')
+" || echo "WARNING: superuser creation failed."
+  else
+    echo "--- Superuser variables not set (DJANGO_SUPERUSER_EMAIL, DJANGO_SUPERUSER_PASSWORD) ---"
+  fi
 fi
 
 echo "--- Starting gunicorn ---"
