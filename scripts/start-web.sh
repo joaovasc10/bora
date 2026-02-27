@@ -82,6 +82,38 @@ sys.exit(1)
 
   echo "--- Running migrations ---"
   python manage.py migrate --noinput || echo "WARNING: migrate failed — check DB connection."
+
+  # ----------------------------------------------------------------
+  # 4. Seeds — idempotent: only run if tables are empty
+  # ----------------------------------------------------------------
+  echo "--- Seeding initial data (if needed) ---"
+  python -c "
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
+django.setup()
+from apps.cities.models import City
+if not City.objects.exists():
+    print('Seeding Porto Alegre...')
+    from django.core.management import call_command
+    call_command('seed_porto_alegre')
+    print('Porto Alegre seeded.')
+else:
+    print('Cities already seeded, skipping.')
+" || echo "WARNING: seed_porto_alegre failed."
+
+  python -c "
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
+django.setup()
+from apps.events.models import Category
+if not Category.objects.exists():
+    print('Seeding categories...')
+    from django.core.management import call_command
+    call_command('seed_categories')
+    print('Categories seeded.')
+else:
+    print('Categories already seeded, skipping.')
+" || echo "WARNING: seed_categories failed."
 fi
 
 echo "--- Starting gunicorn ---"
