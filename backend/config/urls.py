@@ -11,8 +11,26 @@ def health_check(request):
     return JsonResponse({"status": "ok"})
 
 
+def api_root(request):
+    """API root endpoint listing all available endpoints."""
+    return JsonResponse({
+        "message": "POA Eventos API",
+        "endpoints": {
+            "health": "/health/",
+            "admin": "/admin/",
+            "auth": "/api/auth/",
+            "events": "/api/events/",
+            "categories": "/api/categories/",
+            "cities": "/api/cities/",
+            "accounts": "/accounts/",
+        },
+        "version": "1.0.0",
+    })
+
+
 urlpatterns = [
     path("health/", health_check),
+    path("api/", api_root),
     path("admin/", admin.site.urls),
     # API
     path("api/auth/", include("apps.accounts.urls")),
