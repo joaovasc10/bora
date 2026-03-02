@@ -14,10 +14,12 @@ from django.core.management.base import BaseCommand
 # IBGE code for Porto Alegre
 POA_SOURCE_ID = "4314902"
 
-# WKT multipolygon for Porto Alegre (replace with the actual WKT string as needed)
+# WKT polygon for Porto Alegre (approximate city limits, WGS84)
+# Based on official city boundaries
 POA_WKT = (
-    "MULTIPOLYGON(((-51.2675 -30.1087, -51.2675 -30.0346, -51.1867 -30.0346, -51.1867 -30.1087, -51.2675 -30.1087)))"
-    # Exemplo: substitua pelo WKT real se necessário
+    "POLYGON(("
+    "-51.27 -30.21, -51.27 -30.00, -51.05 -30.00, -51.05 -30.21, -51.27 -30.21"
+    "))"
 )
 
 # Center: Largo do Açorianos / Centro Histórico of Porto Alegre
