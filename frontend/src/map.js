@@ -85,6 +85,9 @@ export async function initMap() {
       clusterRadius: 50,
     });
 
+    // Load and render city territory boundary
+    loadCityTerritory();
+
     addClusterLayers();
     window.dispatchEvent(new CustomEvent("map:ready"));
   });
@@ -110,6 +113,59 @@ export async function initMap() {
   });
 
   return mapInstance;
+}
+
+// ----------------------------------------------------------------
+// Load city territory boundary and render on map
+// ----------------------------------------------------------------
+async function loadCityTerritory() {
+  try {
+    // Fetch city geometry from API endpoint
+    const response = await fetch("/api/cities/porto-alegre/geo/");
+    if (!response.ok) {
+      console.warn("Could not fetch city territory geometry");
+      return;
+    }
+
+    const geofeature = await response.json();
+
+    // Add GeoJSON source for city boundary
+    if (!mapInstance?.getSource("city-territory")) {
+      mapInstance?.addSource("city-territory", {
+        type: "geojson",
+        data: geofeature,
+      });
+    }
+
+    // Add fill layer (semi-transparent)
+    if (!mapInstance?.getLayer("city-territory-fill")) {
+      mapInstance?.addLayer({
+        id: "city-territory-fill",
+        type: "fill",
+        source: "city-territory",
+        paint: {
+          "fill-color": "#3B82F6",
+          "fill-opacity": 0.1,
+        },
+      });
+    }
+
+    // Add outline layer (visible border)
+    if (!mapInstance?.getLayer("city-territory-outline")) {
+      mapInstance?.addLayer({
+        id: "city-territory-outline",
+        type: "line",
+        source: "city-territory",
+        paint: {
+          "line-color": "#3B82F6",
+          "line-width": 2,
+          "line-opacity": 0.8,
+        },
+      });
+    }
+  } catch (err) {
+    console.warn("Error loading city territory:", err);
+  }
 }
 
 // ----------------------------------------------------------------

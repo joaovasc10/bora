@@ -2,7 +2,7 @@
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
 from .models import City
-from .serializers import CitySerializer
+from .serializers import CitySerializer, CityGeoFeatureSerializer
 
 
 class CityListView(ListAPIView):
@@ -17,6 +17,15 @@ class CityDetailView(RetrieveAPIView):
     """GET /api/cities/{slug}/ — single city by slug."""
 
     serializer_class = CitySerializer
+    permission_classes = [AllowAny]
+    queryset = City.objects.filter(is_active=True)
+    lookup_field = "slug"
+
+
+class CityGeoView(RetrieveAPIView):
+    """GET /api/cities/{slug}/geo/ — city with geometry (GeoJSON feature)."""
+
+    serializer_class = CityGeoFeatureSerializer
     permission_classes = [AllowAny]
     queryset = City.objects.filter(is_active=True)
     lookup_field = "slug"

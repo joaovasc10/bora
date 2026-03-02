@@ -13,7 +13,7 @@ class CitySerializer(serializers.ModelSerializer):
     class Meta:
         model = City
         fields = [
-            "id", "name", "slug", "state", "country",
+            "id", "name", "slug", "state", "country", "source_id",
             "zoom_default", "is_active", "center_lng", "center_lat",
         ]
 
@@ -22,3 +22,17 @@ class CitySerializer(serializers.ModelSerializer):
 
     def get_center_lat(self, obj) -> float:
         return obj.center.y if obj.center else None
+
+
+class CityGeoFeatureSerializer(GeoFeatureModelSerializer):
+    """GeoJSON serializer for City — includes full bounding_box geometry for map rendering."""
+
+    source_id = serializers.CharField(max_length=16, required=False, allow_blank=True)
+
+    class Meta:
+        model = City
+        geo_field = "bounding_box"
+        fields = [
+            "id", "name", "slug", "state", "country", "source_id",
+            "zoom_default", "is_active", "center",
+        ]
