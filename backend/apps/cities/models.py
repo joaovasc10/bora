@@ -20,6 +20,13 @@ class City(models.Model):
     slug = models.SlugField(max_length=120, unique=True)
     state = models.CharField(max_length=2, help_text="State abbreviation, e.g. RS")
     country = models.CharField(max_length=2, default="BR")
+    source_id = models.CharField(
+        max_length=16,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="IBGE source id (código IBGE do município)"
+    )
     bounding_box = models.PolygonField(
         srid=4326,
         help_text="Polygon defining the valid area for event pins in this city.",
