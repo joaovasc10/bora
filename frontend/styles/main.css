@@ -1,4 +1,4 @@
-/* POA Eventos — main.css (supplements Tailwind) */
+/* Bora — main.css (supplements Tailwind) */
 
 /* ---------------------------------------------------------------- */
 /* Form helpers                                                       */
@@ -10,7 +10,7 @@
 .form-input {
   @apply w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-3
          text-sm text-gray-100 placeholder-gray-500
-         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+         focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500
          transition;
   color: #f3f4f6 !important;
   background-color: #1f2937 !important;
@@ -82,7 +82,7 @@ textarea.form-input {
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 10px solid #3B82F6; /* overridden inline */
+  border-top: 10px solid #FF6B35; /* overridden inline */
   margin-top: -2px;
 }
 
@@ -105,7 +105,7 @@ textarea.form-input {
 }
 .toast.success { @apply border-green-600; }
 .toast.error   { @apply border-red-600; }
-.toast.info    { @apply border-blue-600; }
+.toast.info    { @apply border-orange-600; }
 
 /* ---------------------------------------------------------------- */
 /* Scrollbar                                                         */

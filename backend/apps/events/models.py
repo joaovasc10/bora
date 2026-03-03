@@ -101,9 +101,6 @@ class Event(models.Model):
     instagram_url = models.URLField(blank=True, null=True)
     ticket_url = models.URLField(blank=True, null=True)
 
-    # Media
-    cover_image = models.ImageField(upload_to="events/covers/%Y/%m/", null=True, blank=True)
-
     # Attendance
     max_capacity = models.PositiveIntegerField(null=True, blank=True)
 

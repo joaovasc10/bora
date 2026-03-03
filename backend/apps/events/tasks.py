@@ -92,7 +92,7 @@ def send_event_reminders() -> int:
                     f"📅 {event.start_datetime.strftime('%d/%m/%Y às %H:%M')}\n"
                     f"📌 {event.address or event.neighborhood}\n\n"
                     f"Veja mais detalhes em: {settings.FRONTEND_URL}/events/{event.id}\n\n"
-                    f"Equipe POA Eventos"
+                    f"Equipe Bora"
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=recipients,
@@ -133,9 +133,9 @@ def notify_event_published(event_id: str) -> None:
         subject=f"✅ Seu evento foi aprovado: {event.title}",
         message=(
             f"Parabéns, {event.organizer_name}!\n\n"
-            f"Seu evento '{event.title}' foi aprovado e já aparece no mapa do POA Eventos.\n\n"
+            f"Seu evento '{event.title}' foi aprovado e já aparece no mapa do Bora.\n\n"
             f"Veja em: {settings.FRONTEND_URL}/events/{event.id}\n\n"
-            f"Equipe POA Eventos"
+            f"Equipe Bora"
         ),
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[event.organizer_user.email],

@@ -14,9 +14,9 @@ class CityListView(ListAPIView):
 
 
 class CityDetailView(RetrieveAPIView):
-    """GET /api/cities/{slug}/ — single city by slug."""
+    """GET /api/cities/{slug}/ — single city by slug with GeoJSON boundary."""
 
-    serializer_class = CitySerializer
+    serializer_class = CityGeoFeatureSerializer
     permission_classes = [AllowAny]
     queryset = City.objects.filter(is_active=True)
     lookup_field = "slug"

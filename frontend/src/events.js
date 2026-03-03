@@ -127,11 +127,7 @@ export function openEventDetail(rawData, coords) {
 
   content.innerHTML = `
     <div class="relative">
-      ${
-        p.cover_image_url
-          ? `<img src="${p.cover_image_url}" class="w-full h-48 object-cover" alt="Capa do evento" />`
-          : `<div class="w-full h-24 bg-gray-800 flex items-center justify-center text-4xl">${p.category?.icon || "📍"}</div>`
-      }
+      <div class="w-full h-24 bg-gradient-to-r from-orange-900/40 to-orange-800/40 flex items-center justify-center text-4xl">${p.category?.icon || "📍"}</div>
       <button id="btn-close-detail"
         class="absolute top-2 right-2 w-8 h-8 bg-gray-900/80 rounded-full flex items-center justify-center text-gray-300 hover:text-white transition">
         ✕
@@ -217,6 +213,10 @@ export function openEventDetail(rawData, coords) {
         <button class="share-btn text-xs flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-500 hover:text-gray-300 transition">
           🔗 Compartilhar
         </button>
+        <button id="btn-delete-event" data-event-id="${eventId}"
+          class="delete-btn text-xs flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-red-900 rounded-lg text-gray-500 hover:text-red-400 transition hidden">
+          🗑️ Deletar
+        </button>
       </div>
     </div>
   `;
@@ -249,6 +249,36 @@ export function openEventDetail(rawData, coords) {
       .then(() => showToast("Link copiado!", "success"))
       .catch(() => showToast(url, "info"));
   });
+
+  // Delete button (only show if owner and logged in)
+  const deleteBtn = content.querySelector("#btn-delete-event");
+  async function handleDeleteEvent() {
+    if (!confirm("Tem certeza que deseja deletar este evento?")) return;
+    
+    try {
+      const resp = await apiFetch(`/api/events/${eventId}/`, { method: "DELETE" });
+      if (resp.status === 204 || resp.ok) {
+        showToast("Evento deletado com sucesso!", "success");
+        closeEventDetail();
+        await loadAndRenderEvents();
+      } else {
+        showToast("Erro ao deletar evento.", "error");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      showToast("Erro ao deletar evento.", "error");
+    }
+  }
+  
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", handleDeleteEvent);
+    // Show delete button only if user is logged in and is the owner
+    // Since we don't have organizer_user_id in the response, we'll make an attempt
+    // and the backend will return 403 if not authorized
+    if (isLoggedIn()) {
+      deleteBtn.classList.remove("hidden");
+    }
+  }
 
   // Fly to event location
   if (coords?.length === 2) flyToEvent(coords);
@@ -530,11 +560,6 @@ async function submitCreateEvent(form, modal, cityId) {
   fd.set("city", cityId);
   fd.set("is_free", document.getElementById("form-toggle-free")?.checked ? "true" : "false");
   fd.set("tag_names", JSON.stringify([...tagSet]));
-
-  const coverInput = document.getElementById("cover-image-input");
-  if (coverInput?.files?.[0]) {
-    fd.set("cover_image", coverInput.files[0]);
-  }
 
   try {
     const resp = await apiFetch(`/api/events/`, { method: "POST", body: fd });

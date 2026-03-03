@@ -1,9 +1,6 @@
 """
 Events serializers — GeoJSON FeatureCollection output for map consumption.
 """
-import magic
-import io
-from PIL import Image
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from rest_framework import serializers
@@ -49,7 +46,6 @@ class EventGeoSerializer(GeoFeatureModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     city = CitySerializer(read_only=True)
     interaction_counts = serializers.SerializerMethodField()
-    cover_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -71,7 +67,6 @@ class EventGeoSerializer(GeoFeatureModelSerializer):
             "price_info",
             "instagram_url",
             "ticket_url",
-            "cover_image_url",
             "max_capacity",
             "is_recurring",
             "status",
@@ -89,20 +84,11 @@ class EventGeoSerializer(GeoFeatureModelSerializer):
             counts[it] = counts.get(it, 0) + 1
         return counts
 
-    def get_cover_image_url(self, obj) -> str | None:
-        if not obj.cover_image:
-            return None
-        request = self.context.get("request")
-        if request:
-            return request.build_absolute_uri(obj.cover_image.url)
-        return obj.cover_image.url
-
 
 class EventCreateUpdateSerializer(serializers.ModelSerializer):
     """
     Write serializer for creating/updating events.
     Accepts `lng` + `lat` and builds a PostGIS Point; validates bounding box.
-    Also handles cover image upload with MIME validation and resize.
     """
 
     lng = serializers.FloatField(write_only=True)
@@ -113,7 +99,6 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
         write_only=True,
         allow_empty=True,
     )
-    cover_image = serializers.ImageField(required=False, allow_null=True)
 
     def to_internal_value(self, data):
         """Handle tag_names sent as a JSON string from FormData."""
@@ -139,27 +124,9 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
             "start_datetime", "end_datetime",
             "is_free", "price_info",
             "instagram_url", "ticket_url",
-            "cover_image", "max_capacity",
+            "max_capacity",
             "is_recurring", "recurrence_rule",
         ]
-
-    def validate_cover_image(self, image):
-        """Validate MIME type (not just extension) and enforce 5 MB limit."""
-        if image is None:
-            return image
-        if image.size > settings.MAX_UPLOAD_SIZE:
-            raise serializers.ValidationError(
-                f"Image too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024*1024)} MB."
-            )
-        # Read header bytes for MIME detection
-        header = image.read(2048)
-        image.seek(0)
-        mime = magic.from_buffer(header, mime=True)
-        if mime not in settings.ALLOWED_IMAGE_TYPES:
-            raise serializers.ValidationError(
-                f"Unsupported image type: {mime}. Allowed: {', '.join(settings.ALLOWED_IMAGE_TYPES)}"
-            )
-        return image
 
     def validate(self, data):
         """Build the PostGIS Point from lat/lng. Bounding-box check is advisory only."""
@@ -189,24 +156,10 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
 
         return data
 
-    def _resize_image(self, image, max_size=(1920, 1080)):
-        """Resize uploaded image to max dimensions using Pillow, preserving aspect ratio."""
-        img = Image.open(image)
-        img.thumbnail(max_size, Image.LANCZOS)
-        output = io.BytesIO()
-        fmt = img.format or "JPEG"
-        img.save(output, format=fmt, quality=85, optimize=True)
-        output.seek(0)
-        image.file = output
-        return image
-
     def create(self, validated_data):
         tag_names = validated_data.pop("tag_names", [])
         validated_data.pop("lng", None)
         validated_data.pop("lat", None)
-        cover_image = validated_data.get("cover_image")
-        if cover_image:
-            validated_data["cover_image"] = self._resize_image(cover_image)
 
         request = self.context.get("request")
         user = request.user if request else None
@@ -233,10 +186,6 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
         tag_names = validated_data.pop("tag_names", None)
         validated_data.pop("lng", None)
         validated_data.pop("lat", None)
-
-        cover_image = validated_data.get("cover_image")
-        if cover_image:
-            validated_data["cover_image"] = self._resize_image(cover_image)
 
         # Save history snapshot before mutation
         from .utils import save_event_snapshot

@@ -14,7 +14,7 @@ def health_check(request):
 def api_root(request):
     """API root endpoint listing all available endpoints."""
     return JsonResponse({
-        "message": "POA Eventos API",
+        "message": "Bora API",
         "endpoints": {
             "health": "/health/",
             "admin": "/admin/",

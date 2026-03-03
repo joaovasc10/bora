@@ -144,8 +144,16 @@ class EventViewSet(ModelViewSet):
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
-        """Soft delete — sets deleted_at timestamp, never removes from DB."""
+        """Soft delete — sets deleted_at timestamp, only owner can delete."""
         event = self.get_object()
+        
+        # Check ownership: user must be event creator or admin
+        if event.organizer_user and event.organizer_user != request.user and not request.user.is_staff:
+            return Response(
+                {"detail": "Você não tem permissão para deletar este evento."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         event.deleted_at = timezone.now()
         event.save(update_fields=["deleted_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
