@@ -99,6 +99,28 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
         write_only=True,
         allow_empty=True,
     )
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        required=True,
+        error_messages={
+            'invalid_uuid': 'Categoria deve ser um UUID válido.',
+            'does_not_exist': 'Categoria com este ID não existe.',
+            'incorrect_type': 'ID da categoria deve ser uma string ou número.',
+            'null': 'Categoria é obrigatória.',
+            'required': 'Categoria é obrigatória.',
+        }
+    )
+    city = serializers.PrimaryKeyRelatedField(
+        queryset=City.objects.all(),
+        required=True,
+        error_messages={
+            'invalid_uuid': 'Cidade deve ser um UUID válido.',
+            'does_not_exist': 'Cidade com este ID não existe.',
+            'incorrect_type': 'ID da cidade deve ser uma string ou número.',
+            'null': 'Cidade é obrigatória.',
+            'required': 'Cidade é obrigatória.',
+        }
+    )
 
     def to_internal_value(self, data):
         """Handle tag_names sent as a JSON string from FormData."""
@@ -149,7 +171,9 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
                                 )
                             }
                         )
-                except (AttributeError, Exception) as exc:
+                except serializers.ValidationError:
+                    raise
+                except (AttributeError, TypeError, ValueError) as exc:
                     # bbox check error is non-fatal — log and continue
                     import logging
                     logging.getLogger(__name__).warning("bbox_check_failed: %s", exc)

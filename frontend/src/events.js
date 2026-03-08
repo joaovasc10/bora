@@ -555,6 +555,17 @@ async function submitCreateEvent(form, modal, cityId) {
     return;
   }
 
+  if (!cityId) {
+    if (globalErr) {
+      globalErr.textContent = "Erro ao carregar dados da cidade. Recarregue a página.";
+      globalErr.classList.remove("hidden");
+    }
+    btn.disabled = false;
+    spinner?.classList.add("hidden");
+    label.textContent = "📍 Publicar evento no mapa";
+    return;
+  }
+
   fd.set("lat", lat);
   fd.set("lng", lng);
   fd.set("city", cityId);
