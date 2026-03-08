@@ -93,6 +93,24 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
 
     lng = serializers.FloatField(write_only=True)
     lat = serializers.FloatField(write_only=True)
+    title = serializers.CharField(
+        max_length=120,
+        required=True,
+        error_messages={
+            'blank': 'Título do evento não pode ser vazio.',
+            'required': 'Título do evento é obrigatório.',
+            'max_length': 'Título do evento não pode ter mais de 120 caracteres.',
+        }
+    )
+    organizer_name = serializers.CharField(
+        max_length=150,
+        required=True,
+        error_messages={
+            'blank': 'Nome do organizador não pode ser vazio.',
+            'required': 'Nome do organizador é obrigatório.',
+            'max_length': 'Nome do organizador não pode ter mais de 150 caracteres.',
+        }
+    )
     tag_names = serializers.ListField(
         child=serializers.CharField(max_length=60),
         required=False,
@@ -119,6 +137,14 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
             'incorrect_type': 'ID da cidade deve ser uma string ou número.',
             'null': 'Cidade é obrigatória.',
             'required': 'Cidade é obrigatória.',
+        }
+    )
+    start_datetime = serializers.DateTimeField(
+        required=True,
+        error_messages={
+            'required': 'Data e hora de início são obrigatórias.',
+            'null': 'Data e hora de início são obrigatórias.',
+            'invalid': 'Formato de data/hora inválido. Use: dd/mm/aaaa hh:mm',
         }
     )
 
@@ -151,19 +177,19 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
         return super().to_internal_value(mutable)
 
     def validate_title(self, value):
-        """Validate title field."""
+        """Validate title field — reject if blank/whitespace only."""
         if not value or not value.strip():
-            raise serializers.ValidationError("Título do evento é obrigatório.")
+            raise serializers.ValidationError("Título do evento não pode ser vazio.")
         return value.strip()
 
     def validate_organizer_name(self, value):
-        """Validate organizer_name field."""
+        """Validate organizer_name field — reject if blank/whitespace only."""
         if not value or not value.strip():
-            raise serializers.ValidationError("Nome do organizador é obrigatório.")
+            raise serializers.ValidationError("Nome do organizador não pode ser vazio.")
         return value.strip()
 
     def validate_start_datetime(self, value):
-        """Validate start_datetime field."""
+        """Additional validation for start_datetime if needed."""
         if not value:
             raise serializers.ValidationError("Data e hora de início são obrigatórias.")
         return value
