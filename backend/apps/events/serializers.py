@@ -123,7 +123,10 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
     )
 
     def to_internal_value(self, data):
-        """Handle tag_names sent as a JSON string from FormData."""
+        """
+        Handle tag_names sent as a JSON string from FormData.
+        Also validates required fields (lng/lat) early with clear messages.
+        """
         import json
         mutable = data.copy() if hasattr(data, "copy") else dict(data)
         raw_tags = mutable.get("tag_names")
@@ -134,7 +137,36 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
                     mutable.setlist("tag_names", parsed) if hasattr(mutable, "setlist") else mutable.update({"tag_names": parsed})
             except (json.JSONDecodeError, AttributeError):
                 pass
+        
+        # Validate required location fields early
+        if not mutable.get("lng"):
+            raise serializers.ValidationError(
+                {"lng": "Longitude (mapear localização) é obrigatória."}
+            )
+        if not mutable.get("lat"):
+            raise serializers.ValidationError(
+                {"lat": "Latitude (mapear localização) é obrigatória."}
+            )
+        
         return super().to_internal_value(mutable)
+
+    def validate_title(self, value):
+        """Validate title field."""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Título do evento é obrigatório.")
+        return value.strip()
+
+    def validate_organizer_name(self, value):
+        """Validate organizer_name field."""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Nome do organizador é obrigatório.")
+        return value.strip()
+
+    def validate_start_datetime(self, value):
+        """Validate start_datetime field."""
+        if not value:
+            raise serializers.ValidationError("Data e hora de início são obrigatórias.")
+        return value
 
     class Meta:
         model = Event

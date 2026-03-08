@@ -5,7 +5,7 @@ import structlog
 from django.contrib.gis.geos import Polygon, Point
 from django.contrib.gis.measure import D
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.decorators import action
 from rest_framework.generics import ListAPIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -139,6 +139,38 @@ class EventViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """Override create to return formatted error messages."""
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError as exc:
+            # Map field names to Portuguese descriptions for better UX
+            field_names_pt = {
+                'title': 'Título do evento',
+                'organizer_name': 'Nome do organizador',
+                'category': 'Categoria',
+                'start_datetime': 'Data e hora de início',
+                'city': 'Cidade',
+                'lng': 'Longitude (localização no mapa)',
+                'lat': 'Latitude (localização no mapa)',
+                'is_free': 'Tipo (gratuito/pago)',
+            }
+            
+            formatted_errors = {}
+            for field, errors in exc.detail.items():
+                pt_field = field_names_pt.get(field, field)
+                if isinstance(errors, list):
+                    formatted_errors[field] = [f"{pt_field}: {str(err)}" for err in errors]
+                else:
+                    formatted_errors[field] = [f"{pt_field}: {str(errors)}"]
+            
+            return Response(formatted_errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_update(self, serializer):
         serializer.save()

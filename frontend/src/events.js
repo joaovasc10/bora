@@ -607,9 +607,26 @@ async function submitCreateEvent(form, modal, cityId) {
         miniMapMarker = null;
       }
     } else {
-      const errors = Object.values(data).flat().join(" ");
+      // Extract and display validation errors by field
+      const errors = data || {};
+      const errorMessages = [];
+      
+      // Build human-readable error list
+      for (const [field, msgs] of Object.entries(errors)) {
+        const msgList = Array.isArray(msgs) ? msgs : [msgs];
+        msgList.forEach(msg => {
+          errorMessages.push(msg);
+        });
+      }
+      
       if (globalErr) {
-        globalErr.textContent = errors;
+        if (errorMessages.length > 0) {
+          globalErr.innerHTML = errorMessages
+            .map(msg => `<div>• ${msg}</div>`)
+            .join('');
+        } else {
+          globalErr.textContent = "Erro ao criar evento. Verifique os dados e tente novamente.";
+        }
         globalErr.classList.remove("hidden");
       }
     }
