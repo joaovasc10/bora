@@ -1,310 +1,791 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bora — Mapa Colaborativo de Eventos</title>
   <meta name="description" content="Descubra e publique eventos em Porto Alegre no mapa interativo colaborativo." />
-
-  <!-- Open Graph -->
   <meta property="og:title" content="Bora" />
   <meta property="og:description" content="Mapa colaborativo de eventos em Porto Alegre." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://poaeventos.com.br" />
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <!-- Material Symbols Outlined -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+    rel="stylesheet" />
 
   <!-- Mapbox GL JS -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 
-  <!-- Three.js (ES Module via CDN) -->
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js"
-    }
-  }
-  </script>
-
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS (utility helpers) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: { DEFAULT: '#FF6B35', dark: '#E55100' }
-          }
-        }
-      }
-    }
+      theme: { extend: { colors: { brand: { DEFAULT: '#F97316', dark: '#E86306' } } } }
+    };
   </script>
 
   <link rel="stylesheet" href="styles/main.css" />
 </head>
-<body class="dark bg-gray-950 text-gray-100 h-screen overflow-hidden flex">
+
+<body>
 
   <!-- ============================================================ -->
-  <!-- LEFT SIDEBAR                                                   -->
+  <!-- SIDE NAVBAR (80px fixed left)                                 -->
   <!-- ============================================================ -->
-  <aside id="sidebar-left"
-    class="w-72 min-w-[18rem] flex flex-col bg-gray-900 border-r border-gray-800 z-10 overflow-y-auto transition-transform duration-300">
+  <nav id="side-nav">
+    <button class="side-nav-logo" id="btn-nav-home" title="Início">
+      <span class="material-symbols-outlined">bubble_chart</span>
+    </button>
 
-    <!-- Logo -->
-    <div class="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
-      <span class="text-2xl">📍</span>
-      <div>
-        <h1 class="font-bold text-lg leading-none">Bora</h1>
-        <p class="text-xs text-gray-400">Eventos POA</p>
-      </div>
-    </div>
-
-    <!-- Add event button -->
-    <div class="px-4 py-3 border-b border-gray-800">
-      <button id="btn-new-event"
-        class="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
-        <span>📍</span> Pinar meu evento
+    <div class="side-nav-links">
+      <button class="side-nav-item active" data-view="map" title="Home">
+        <span class="material-symbols-outlined">home</span>
+      </button>
+      <button class="side-nav-item" data-view="add" title="Pinar Evento">
+        <span class="material-symbols-outlined">add_circle</span>
+      </button>
+      <button class="side-nav-item" data-view="explore" title="Explorar">
+        <span class="material-symbols-outlined">explore</span>
+      </button>
+      <button class="side-nav-item" data-view="saved" title="Eventos Salvos">
+        <span class="material-symbols-outlined">bookmark</span>
       </button>
     </div>
 
-    <!-- Search -->
-    <div class="px-4 py-3 border-b border-gray-800">
-      <div class="relative">
-        <input id="search-input" type="search" placeholder="Buscar eventos..."
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 pl-9 pr-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-brand" />
-        <span class="absolute left-3 top-2.5 text-gray-500 text-sm">🔍</span>
+    <div class="side-nav-footer">
+      <button class="side-nav-item" data-view="notifications" title="Central de Atividades">
+        <span class="material-symbols-outlined">notifications</span>
+      </button>
+      <button class="side-nav-item" data-view="settings" title="Preferências">
+        <span class="material-symbols-outlined">settings</span>
+      </button>
+      <div id="side-nav-avatar" class="side-nav-avatar" data-view="profile" title="Perfil" style="cursor:pointer">
+        <span class="material-symbols-outlined" style="font-size:20px;color:var(--on-surface-variant)">person</span>
       </div>
     </div>
-
-    <!-- Date filters -->
-    <div class="px-4 py-3 border-b border-gray-800">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Data</p>
-      <div class="flex flex-wrap gap-1">
-        <button data-date-filter="today"
-          class="date-filter-btn text-xs px-2 py-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">
-          Hoje
-        </button>
-        <button data-date-filter="weekend"
-          class="date-filter-btn text-xs px-2 py-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">
-          Fim de semana
-        </button>
-        <button data-date-filter="week"
-          class="date-filter-btn text-xs px-2 py-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">
-          Esta semana
-        </button>
-      </div>
-      <input id="custom-date" type="date"
-        class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg py-1.5 px-3 text-sm text-gray-100 focus:outline-none focus:border-brand" />
-    </div>
-
-    <!-- Free only toggle -->
-    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-      <span class="text-sm text-gray-300">Apenas gratuitos</span>
-      <label class="relative inline-flex items-center cursor-pointer">
-        <input id="toggle-free" type="checkbox" class="sr-only peer" />
-        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
-      </label>
-    </div>
-
-    <!-- Category filters -->
-    <div class="px-4 py-3 flex-1">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Categorias</p>
-      <div id="category-filters" class="space-y-1">
-        <!-- Populated by filters.js -->
-        <p class="text-xs text-gray-500">Carregando...</p>
-      </div>
-    </div>
-
-    <!-- Auth section -->
-    <div class="px-4 py-3 border-t border-gray-800">
-      <div id="auth-section">
-        <!-- Populated by auth.js -->
-      </div>
-    </div>
-  </aside>
+  </nav>
 
   <!-- ============================================================ -->
-  <!-- MAP                                                           -->
+  <!-- APP CONTAINER                                                 -->
   <!-- ============================================================ -->
-  <main class="flex-1 relative">
-    <div id="map" class="w-full h-full"></div>
+  <div id="app-container">
 
-    <!-- Map loading overlay -->
-    <div id="map-loading"
-      class="absolute inset-0 bg-gray-950 flex items-center justify-center z-20 transition-opacity duration-500">
-      <div class="text-center">
-        <div class="text-4xl mb-2 animate-bounce">📍</div>
-        <p class="text-gray-400">Carregando mapa...</p>
-      </div>
-    </div>
-  </main>
+    <!-- ========================================================== -->
+    <!-- VIEW: MAP (Home)                                            -->
+    <!-- ========================================================== -->
+    <div id="view-map" class="view active">
 
-  <!-- ============================================================ -->
-  <!-- RIGHT SIDEBAR — Event Detail                                  -->
-  <!-- ============================================================ -->
-  <aside id="sidebar-right"
-    class="w-96 min-w-[24rem] flex flex-col bg-gray-900 border-l border-gray-800 z-10 overflow-y-auto transform translate-x-full transition-transform duration-300">
-    <div id="event-detail-content" class="flex-1">
-      <!-- Populated by events.js -->
-    </div>
-  </aside>
-
-  <!-- ============================================================ -->
-  <!-- MODAL — Create Event                                          -->
-  <!-- ============================================================ -->
-  <div id="modal-overlay"
-    class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div id="modal-create-event"
-      class="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700">
-
-      <!-- Modal header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
-        <h2 class="text-xl font-bold">📍 Novo Evento</h2>
-        <button id="btn-close-modal"
-          class="text-gray-400 hover:text-white text-2xl leading-none transition">×</button>
-      </div>
-
-      <!-- Form -->
-      <form id="form-create-event" class="px-6 py-4 space-y-4" novalidate>
-
-        <!-- Title -->
-        <div>
-          <label class="form-label">Título do evento *</label>
-          <input name="title" type="text" maxlength="120" required
-            class="form-input" placeholder="Ex: Show do Grupo Molejo" />
-          <p class="form-error hidden"></p>
+      <!-- Inner Panel (320px) -->
+      <aside id="inner-panel">
+        <div class="inner-panel-header">
+          <h1 class="inner-panel-title">Bora</h1>
+          <p class="inner-panel-subtitle">O Pulso da Cidade</p>
         </div>
 
-        <!-- Category -->
-        <div>
-          <label class="form-label">Categoria *</label>
-          <select name="category" required class="form-input">
-            <option value="">Selecione uma categoria...</option>
-          </select>
-          <p class="form-error hidden"></p>
-        </div>
-
-        <!-- Location picker -->
-        <div>
-          <label class="form-label">Localização * — clique no mini-mapa ou busque</label>
-          <div class="flex gap-2 mb-2">
-            <input id="location-search" type="text"
-              class="form-input flex-1" placeholder="Buscar endereço..." />
-            <button type="button" id="btn-use-current-location"
-              class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition" title="Usar minha localização">
-              📌
-            </button>
-          </div>
-          <div id="mini-map" class="w-full h-48 rounded-lg overflow-hidden border border-gray-700"></div>
-          <input type="hidden" name="lat" id="selected-lat" />
-          <input type="hidden" name="lng" id="selected-lng" />
-          <p class="form-error hidden" id="location-error"></p>
-        </div>
-
-        <!-- Address -->
-        <div>
-          <label class="form-label">Endereço</label>
-          <input name="address" type="text" class="form-input"
-            placeholder="Preenchido automaticamente via geocoding..." />
-        </div>
-
-        <!-- Neighborhood -->
-        <div>
-          <label class="form-label">Bairro</label>
-          <input name="neighborhood" type="text" class="form-input" placeholder="Ex: Moinhos de Vento" />
-        </div>
-
-        <!-- Organizer -->
-        <div>
-          <label class="form-label">Nome do organizador *</label>
-          <input name="organizer_name" type="text" required class="form-input"
-            placeholder="Nome da banda, empresa, coletivo..." />
-          <p class="form-error hidden"></p>
-        </div>
-
-        <!-- Date/time row -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="form-label">Início *</label>
-            <input name="start_datetime" type="datetime-local" required class="form-input" />
-            <p class="form-error hidden"></p>
-          </div>
-          <div>
-            <label class="form-label">Fim (opcional)</label>
-            <input name="end_datetime" type="datetime-local" class="form-input" />
+        <div class="inner-panel-search">
+          <div class="search-box">
+            <span class="material-symbols-outlined">search</span>
+            <input id="search-input" type="search" placeholder="Buscar eventos..." autocomplete="off" />
           </div>
         </div>
 
-        <!-- Free / Paid -->
-        <div class="flex items-center gap-4">
-          <span class="form-label mb-0">É gratuito? *</span>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input id="form-toggle-free" type="checkbox" name="is_free" class="sr-only peer" checked />
-            <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
-          </label>
-        </div>
-
-        <div id="price-info-field" class="hidden">
-          <label class="form-label">Informações de preço</label>
-          <input name="price_info" type="text" class="form-input"
-            placeholder="Ex: R$ 50, meia pra estudantes" />
-        </div>
-
-        <!-- Links -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="form-label">Instagram</label>
-            <input name="instagram_url" type="url" class="form-input" placeholder="https://instagram.com/..." />
-          </div>
-          <div>
-            <label class="form-label">Link de ingressos</label>
-            <input name="ticket_url" type="url" class="form-input" placeholder="https://sympla.com.br/..." />
-          </div>
-        </div>
-
-        <!-- Description -->
-        <div>
-          <label class="form-label">Descrição <span class="text-gray-500 text-xs">(máx. 500 caracteres)</span></label>
-          <textarea name="description" rows="3" maxlength="500" class="form-input resize-y"
-            placeholder="O que rola no evento? Atrações, dicas..."></textarea>
-          <p class="text-xs text-gray-500 text-right mt-1"><span id="desc-count">0</span>/500</p>
-        </div>
-
-        <!-- Cover image -->
-        <!-- Removed to reduce storage costs -->
-
-        <!-- Tags -->
-        <div>
-          <label class="form-label">Tags</label>
-          <input name="tags" id="tag-input" type="text" class="form-input"
-            placeholder="Adicione tags e pressione Enter..." />
-          <div id="tags-container" class="flex flex-wrap gap-1 mt-1"></div>
-        </div>
-
-        <!-- Capacity -->
-        <div>
-          <label class="form-label">Capacidade máxima (opcional)</label>
-          <input name="max_capacity" type="number" min="1" class="form-input" placeholder="Ex: 500" />
-        </div>
-
-        <!-- Submit -->
-        <div class="pt-2 pb-4">
-          <div id="form-error-global" class="hidden bg-red-900/60 border border-red-700 rounded-lg px-4 py-3 text-sm text-red-300 mb-3 space-y-1"></div>
-          <button type="submit" id="btn-submit-event"
-            class="w-full bg-brand hover:bg-brand-dark text-white font-bold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2">
-            <span id="submit-spinner" class="hidden animate-spin">⟳</span>
-            <span id="submit-label">📍 Publicar evento no mapa</span>
+        <div class="inner-panel-cta">
+          <button id="btn-new-event" class="btn-pin-event">
+            <span class="material-symbols-outlined" style="font-size:17px">push_pin</span>
+            Pinar Meu Evento
           </button>
         </div>
 
+        <div class="inner-panel-categories">
+          <p class="section-label">Categorias</p>
+        </div>
+
+        <div id="category-filters">
+          <p style="font-size:13px;color:var(--on-surface-variant);padding:8px 4px;">Carregando...</p>
+        </div>
+
+        <!-- Hidden legacy filters (kept for filters.js compatibility) -->
+        <div style="display:none" aria-hidden="true">
+          <input id="toggle-free" type="checkbox" />
+          <button class="date-filter-btn" data-date-filter="today">Hoje</button>
+          <button class="date-filter-btn" data-date-filter="weekend">Fim de semana</button>
+          <button class="date-filter-btn" data-date-filter="week">Esta semana</button>
+          <input id="custom-date" type="date" />
+        </div>
+
+        <div class="inner-panel-footer">
+          <div id="auth-section">
+            <!-- Populated by auth.js -->
+          </div>
+        </div>
+      </aside>
+
+      <!-- Map area (flex-1) -->
+      <main id="map-area">
+        <div id="map"></div>
+
+        <!-- Loading overlay -->
+        <div id="map-loading">
+          <div style="text-align:center">
+            <div
+              style="width:48px;height:48px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;animation:pulse 1.8s ease-in-out infinite">
+              <span class="material-symbols-outlined"
+                style="color:#fff;font-size:26px;font-variation-settings:'FILL' 1">bubble_chart</span>
+            </div>
+            <p style="color:var(--on-surface-variant);font-size:14px;margin:0">Carregando mapa...</p>
+          </div>
+        </div>
+
+        <!-- Floating filters (top center) -->
+        <div id="floating-filters" class="glass-panel">
+          <button class="float-filter-btn" data-float-cat="feiras">Feiras</button>
+          <button class="float-filter-btn" data-float-cat="teatro">Teatro</button>
+          <button class="float-filter-btn" data-float-cat="corrida">Corrida</button>
+          <button class="float-filter-btn" data-float-cat="show-musica-ao-vivo">Shows</button>
+        </div>
+
+        <!-- Weather / nearby widget (top right) -->
+        <div id="weather-widget" class="glass-panel">
+          <div class="weather-info">
+            <span class="weather-city">Porto Alegre</span>
+            <span class="weather-temp" id="weather-temp">--°</span>
+            <span class="weather-cond" id="weather-cond">--</span>
+          </div>
+          <div class="weather-sep"></div>
+          <div class="nearby-info">
+            <span class="nearby-label">Nearby</span>
+            <span class="nearby-count" id="nearby-count">--</span>
+            <span class="weather-cond">eventos</span>
+          </div>
+        </div>
+
+        <!-- Floating event detail tooltip -->
+        <div id="event-detail-card">
+          <!-- Populated by events.js openEventDetail() -->
+        </div>
+
+        <!-- Full event detail panel (slides from right) -->
+        <div id="event-full-panel">
+          <!-- Populated by events.js showFullEventDetail() -->
+        </div>
+
+        <!-- Custom map controls (bottom right) -->
+        <div id="map-controls">
+          <button class="map-ctrl-btn glass-panel" id="btn-zoom-in" title="Zoom in">
+            <span class="material-symbols-outlined">add</span>
+          </button>
+          <button class="map-ctrl-btn glass-panel" id="btn-zoom-out" title="Zoom out">
+            <span class="material-symbols-outlined">remove</span>
+          </button>
+          <button class="map-ctrl-btn primary" id="btn-geolocate" title="Minha localização">
+            <span class="material-symbols-outlined">near_me</span>
+          </button>
+        </div>
+      </main>
+    </div><!-- /#view-map -->
+
+    <!-- ========================================================== -->
+    <!-- VIEW: EXPLORE                                               -->
+    <!-- ========================================================== -->
+    <div id="view-explore" class="view">
+
+      <!-- Top navigation bar -->
+      <nav class="explore-topnav">
+        <div class="explore-search-wrap">
+          <span class="material-symbols-outlined">search</span>
+          <input class="explore-search" id="explore-search" type="search" placeholder="Buscar eventos..." />
+        </div>
+        <div class="explore-nav-links">
+          <button class="explore-nav-link" data-explore-cat="feiras">Feiras</button>
+          <button class="explore-nav-link" data-explore-cat="teatro">Teatro</button>
+          <button class="explore-nav-link" data-explore-cat="corrida">Corrida</button>
+          <button class="explore-nav-link" data-explore-cat="show-musica-ao-vivo">Shows</button>
+        </div>
+        <button class="btn-pin-event-sm" id="btn-new-event-explore">
+          <span class="material-symbols-outlined">push_pin</span>
+          Pin My Event
+        </button>
+      </nav>
+
+      <!-- Explore content -->
+      <div class="explore-content">
+        <div class="explore-header">
+          <div>
+            <h2 class="explore-title">Acontecendo em Breve</h2>
+            <p class="explore-subtitle">Eventos que vão agitar Porto Alegre</p>
+          </div>
+          <div class="explore-header-actions">
+            <button class="btn-weekend" id="btn-filter-weekend">Este Fim de Semana</button>
+            <button class="btn-sort">
+              <span class="material-symbols-outlined">tune</span>
+              Ordenar
+            </button>
+          </div>
+        </div>
+
+        <div id="explore-grid" class="bento-grid">
+          <div style="grid-column:span 3;text-align:center;padding:64px 0;color:var(--on-surface-variant)">
+            <span class="material-symbols-outlined"
+              style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3">explore</span>
+            Carregando eventos...
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating "Abrir Mapa" button -->
+      <button id="btn-open-map" title="Abrir mapa">
+        <span class="material-symbols-outlined">map</span>
+        <span class="open-map-label">Abrir Mapa</span>
+      </button>
+
+    </div><!-- /#view-explore -->
+
+    <!-- ========================================================== -->
+    <!-- VIEW: SAVED EVENTS                                          -->
+    <!-- ========================================================== -->
+    <div id="view-saved" class="view">
+      <div class="fullpage-layout">
+
+        <!-- Header -->
+        <div class="fullpage-topbar">
+          <div>
+            <p class="fullpage-eyebrow">Arquivo Pessoal</p>
+            <h1 class="fullpage-title">Eventos <span style="color:var(--primary)">Salvos</span></h1>
+            <p class="fullpage-subtitle">Sua curadoria exclusiva de Porto Alegre.</p>
+          </div>
+        </div>
+
+        <!-- Filter chips + sort -->
+        <div class="fullpage-filters">
+          <div class="chip-group" id="saved-cat-chips">
+            <button class="chip active" data-saved-cat="all">Todos</button>
+          </div>
+          <button class="btn-sort" id="btn-saved-sort">
+            <span class="material-symbols-outlined">sort</span>
+            Ordenar por Data
+          </button>
+        </div>
+
+        <!-- Grid -->
+        <div id="saved-grid" class="saved-grid">
+          <div class="saved-empty" id="saved-empty">
+            <span class="material-symbols-outlined" style="font-size:48px;opacity:0.2">bookmark</span>
+            <p>Nenhum evento salvo ainda.</p>
+            <p style="font-size:13px">Salve eventos direto do mapa para vê-los aqui.</p>
+          </div>
+        </div>
+      </div>
+    </div><!-- /#view-saved -->
+
+    <!-- ========================================================== -->
+    <!-- VIEW: NOTIFICATIONS (Central de Atividades)                 -->
+    <!-- ========================================================== -->
+    <div id="view-notifications" class="view">
+      <div class="fullpage-layout">
+
+        <div class="fullpage-topbar">
+          <div>
+            <h1 class="fullpage-title" style="font-size:2.2rem">Central de Atividades</h1>
+            <p class="fullpage-subtitle">Sinta o ritmo da cidade. Veja o que mudou enquanto você estava fora.</p>
+          </div>
+          <button class="btn-sort" id="btn-mark-all-read">
+            <span class="material-symbols-outlined">done_all</span>
+            Marcar tudo como lido
+          </button>
+        </div>
+
+        <div class="activity-layout">
+          <!-- Left: Radar + Influence -->
+          <div class="activity-left">
+
+            <div class="activity-card" id="radar-card">
+              <div class="activity-card-header">
+                <span class="material-symbols-outlined" style="color:var(--primary)">radar</span>
+                <span class="activity-card-title">Radar Local</span>
+              </div>
+              <div class="radar-stat">
+                <span class="radar-label">Eventos Ativos</span>
+                <span class="radar-value" id="radar-active">—</span>
+              </div>
+              <div class="radar-stat">
+                <span class="radar-label">Perto de Você</span>
+                <span class="radar-value" id="radar-nearby">—</span>
+                <span class="radar-dot" id="radar-nearby-dot"></span>
+              </div>
+              <div class="radar-stat">
+                <span class="radar-label">Tendência</span>
+                <span class="radar-value" id="radar-trend" style="font-size:1rem">—</span>
+                <span class="material-symbols-outlined" style="color:var(--primary);font-size:16px">trending_up</span>
+              </div>
+            </div>
+
+            <div class="activity-card" id="influence-card">
+              <div class="activity-card-header">
+                <span class="material-symbols-outlined" style="color:var(--primary)">military_tech</span>
+                <span class="activity-card-title">Nível de Influência</span>
+              </div>
+              <div class="influence-row">
+                <div class="influence-level-badge" id="influence-level">LV.<br>01</div>
+                <div style="flex:1">
+                  <p class="influence-tier" id="influence-tier">Explorador</p>
+                  <p class="influence-next" id="influence-next">Próximo nível: Destaque</p>
+                  <div class="xp-bar-track">
+                    <div class="xp-bar-fill" id="xp-bar" style="width:5%"></div>
+                  </div>
+                  <div class="xp-row">
+                    <span id="xp-current">0 XP</span>
+                    <span id="xp-next">500 XP</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right: Activity feed -->
+          <div class="activity-right">
+            <div class="activity-feed-header">
+              <span class="activity-section-label">Atividade Recente</span>
+            </div>
+            <div id="activity-feed" class="activity-feed">
+              <div class="activity-feed-loading">
+                <span class="material-symbols-outlined" style="font-size:36px;opacity:0.2">notifications</span>
+                <p style="color:var(--on-surface-variant);font-size:14px">Carregando atividades...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /#view-notifications -->
+
+    <!-- ========================================================== -->
+    <!-- VIEW: SETTINGS (Preferências)                               -->
+    <!-- ========================================================== -->
+    <div id="view-settings" class="view">
+      <div class="fullpage-layout">
+
+        <div class="fullpage-topbar">
+          <div>
+            <h1 class="fullpage-title" style="font-size:2rem">
+              <span class="material-symbols-outlined"
+                style="font-size:1.8rem;vertical-align:middle;color:var(--primary);margin-right:8px">settings</span>
+              Configurações
+            </h1>
+            <p class="fullpage-subtitle">Personalize sua experiência em Porto Alegre.</p>
+          </div>
+        </div>
+
+        <div class="settings-layout">
+
+          <!-- Left column -->
+          <div class="settings-col">
+
+            <!-- Account -->
+            <div class="settings-card">
+              <div class="settings-card-header">
+                <span class="material-symbols-outlined" style="color:var(--primary)">manage_accounts</span>
+                <span class="settings-card-title">Gerenciamento de Conta</span>
+                <div class="settings-avatar-wrap">
+                  <div id="settings-avatar" class="settings-avatar">
+                    <span class="material-symbols-outlined"
+                      style="font-size:32px;color:var(--on-surface-variant)">person</span>
+                  </div>
+                </div>
+              </div>
+              <label class="settings-field-label">Nome Completo</label>
+              <input id="settings-name" type="text" class="settings-input" placeholder="Seu nome" />
+              <label class="settings-field-label" style="margin-top:12px">E-mail</label>
+              <input id="settings-email" type="email" class="settings-input" placeholder="seu@email.com" readonly
+                style="opacity:0.6;cursor:not-allowed" />
+              <button id="btn-update-profile" class="btn-settings-primary" style="margin-top:16px">Atualizar
+                Perfil</button>
+            </div>
+
+            <!-- Map prefs -->
+            <div class="settings-card">
+              <div class="settings-card-header">
+                <span class="material-symbols-outlined" style="color:var(--primary)">map</span>
+                <span class="settings-card-title">Preferências do Mapa</span>
+              </div>
+              <div class="settings-toggle-row">
+                <div>
+                  <p class="settings-toggle-label">Modo Noturno Automático</p>
+                  <p class="settings-toggle-desc">Ativa o tema escuro baseado no pôr do sol.</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-dark-auto" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right column -->
+          <div class="settings-col">
+
+            <!-- Notifications -->
+            <div class="settings-card">
+              <div class="settings-card-header">
+                <span class="material-symbols-outlined" style="color:var(--primary)">notifications_active</span>
+                <span class="settings-card-title">Notificações</span>
+              </div>
+              <div class="settings-toggle-row">
+                <div>
+                  <p class="settings-toggle-label">Alertas de Eventos Próximos</p>
+                  <p class="settings-toggle-desc">Avisar quando um evento salvo estiver a menos de 2km.</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-notif-nearby" checked />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="settings-toggle-row" style="margin-top:12px">
+                <div>
+                  <p class="settings-toggle-label">Atualizações Meteorológicas</p>
+                  <p class="settings-toggle-desc">Notificar mudanças bruscas de tempo para eventos ao ar livre.</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-notif-weather" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Privacy -->
+            <div class="settings-card">
+              <div class="settings-card-header">
+                <span class="material-symbols-outlined" style="color:var(--primary)">security</span>
+                <span class="settings-card-title">Privacidade &amp; Dados</span>
+              </div>
+              <button class="settings-nav-row">
+                <span class="material-symbols-outlined"
+                  style="font-size:18px;color:var(--on-surface-variant)">location_history</span>
+                Histórico de Localização
+                <span class="material-symbols-outlined"
+                  style="font-size:18px;color:var(--on-surface-variant);margin-left:auto">chevron_right</span>
+              </button>
+              <button class="settings-nav-row">
+                <span class="material-symbols-outlined"
+                  style="font-size:18px;color:var(--on-surface-variant)">visibility_off</span>
+                Modo Invisível
+                <span class="material-symbols-outlined"
+                  style="font-size:18px;color:var(--on-surface-variant);margin-left:auto">chevron_right</span>
+              </button>
+              <button id="btn-delete-account" class="settings-danger-btn">EXCLUIR MINHA CONTA</button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /#view-settings -->
+
+    <!-- ========================================================== -->
+    <!-- VIEW: PROFILE                                               -->
+    <!-- ========================================================== -->
+    <div id="view-profile" class="view">
+      <div class="fullpage-layout">
+
+        <div class="profile-hero">
+          <div class="profile-avatar-wrap">
+            <div id="profile-avatar" class="profile-avatar">
+              <span class="material-symbols-outlined"
+                style="font-size:48px;color:var(--on-surface-variant)">person</span>
+            </div>
+          </div>
+          <div class="profile-info">
+            <p class="profile-level-badge" id="profile-level-badge">NÍVEL EXPLORADOR</p>
+            <h1 class="profile-name" id="profile-name">—</h1>
+            <p class="profile-meta" id="profile-meta">Porto Alegre, RS</p>
+          </div>
+          <div class="profile-bio-card">
+            <div class="profile-bio-header">
+              <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary)">auto_stories</span>
+              Bio do Pulso
+            </div>
+            <p class="profile-bio-text" id="profile-bio">Explorando os melhores eventos de Porto Alegre.</p>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="profile-stats-row">
+          <div class="profile-stat-card">
+            <span class="material-symbols-outlined"
+              style="font-size:28px;color:var(--primary)">confirmation_number</span>
+            <span class="profile-stat-value" id="profile-events-count">0</span>
+            <span class="profile-stat-label">Eventos Criados</span>
+          </div>
+          <div class="profile-stat-card">
+            <span class="material-symbols-outlined" style="font-size:28px;color:var(--primary)">bookmark</span>
+            <span class="profile-stat-value" id="profile-saved-count">0</span>
+            <span class="profile-stat-label">Eventos Salvos</span>
+          </div>
+          <div class="profile-stat-card">
+            <span class="material-symbols-outlined" style="font-size:28px;color:var(--primary)">waving_hand</span>
+            <span class="profile-stat-value" id="profile-going-count">0</span>
+            <span class="profile-stat-label">Vou Comparecer</span>
+          </div>
+        </div>
+
+        <!-- Recent activity -->
+        <div class="profile-section-title">Meus Eventos</div>
+        <div id="profile-my-events" class="profile-events-list">
+          <p style="color:var(--on-surface-variant);font-size:14px;padding:16px 0">Nenhum evento criado ainda.</p>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:12px;flex-wrap:wrap;padding-top:8px">
+          <button id="profile-btn-add-event" class="btn-pin-event" style="width:auto;padding:12px 24px">
+            <span class="material-symbols-outlined" style="font-size:17px">push_pin</span>
+            Criar Novo Evento
+          </button>
+          <button id="profile-btn-logout" class="btn-sort" style="padding:12px 20px">
+            <span class="material-symbols-outlined" style="font-size:17px">logout</span>
+            Sair
+          </button>
+        </div>
+
+      </div>
+    </div><!-- /#view-profile -->
+
+  </div><!-- /#app-container -->
+
+  <!-- ============================================================ -->
+  <!-- MODAL: Criar Evento                                           -->
+  <!-- ============================================================ -->
+  <div id="modal-overlay">
+    <div id="modal-create-event">
+
+      <!-- Modal header -->
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Pinar Novo Evento</h2>
+          <p class="modal-subtitle">Contribua com o pulso da cidade.</p>
+        </div>
+        <button id="btn-close-modal" class="modal-close-btn" title="Fechar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Modal body: 2-column grid via form -->
+      <form id="form-create-event" novalidate>
+        <div class="modal-body">
+
+          <!-- LEFT COLUMN -->
+          <div class="modal-col">
+
+            <!-- Event name -->
+            <div>
+              <label class="modal-field-label" for="evt-title">Nome do Evento</label>
+              <input id="evt-title" name="title" type="text" maxlength="120" required class="modal-input"
+                placeholder="Ex: Show do Grupo Molejo" />
+              <p class="form-error" style="display:none"></p>
+            </div>
+
+            <!-- Category chips -->
+            <div>
+              <label class="modal-field-label">Categoria</label>
+              <div class="category-chips" id="modal-category-chips">
+                <!-- Populated by initCreateEventModal -->
+              </div>
+              <input type="hidden" name="category" id="modal-category-value" />
+              <p class="form-error" style="display:none"></p>
+            </div>
+
+            <!-- Date/time -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label class="modal-field-label">Início</label>
+                <div class="modal-input-with-icon">
+                  <span class="material-symbols-outlined">calendar_today</span>
+                  <input name="start_datetime" type="datetime-local" required class="modal-input" />
+                </div>
+                <p class="form-error" style="display:none"></p>
+              </div>
+              <div>
+                <label class="modal-field-label">Fim (opcional)</label>
+                <div class="modal-input-with-icon">
+                  <span class="material-symbols-outlined">schedule</span>
+                  <input name="end_datetime" type="datetime-local" class="modal-input" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Organizer -->
+            <div>
+              <label class="modal-field-label">Organizador</label>
+              <input name="organizer_name" type="text" required class="modal-input"
+                placeholder="Banda, empresa, coletivo..." />
+              <p class="form-error" style="display:none"></p>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="modal-field-label">Descrição</label>
+              <textarea name="description" rows="3" maxlength="500" class="modal-input"
+                placeholder="O que rola no evento? Atrações, dicas..."></textarea>
+              <p style="font-size:11px;color:var(--on-surface-variant);text-align:right;margin-top:4px">
+                <span id="desc-count">0</span>/500
+              </p>
+            </div>
+
+            <!-- Tags -->
+            <div>
+              <label class="modal-field-label">Tags</label>
+              <div style="display:flex;gap:8px">
+                <input id="tag-input" type="text" class="modal-input" style="flex:1"
+                  placeholder="Adicione tags e pressione Enter..." />
+                <button type="button" id="btn-add-tag"
+                  style="background:var(--surface-high);border:1px solid var(--outline);border-radius:10px;padding:0 16px;color:var(--on-surface);font-size:20px;cursor:pointer;transition:background 0.15s;flex-shrink:0">
+                  +
+                </button>
+              </div>
+              <div id="tags-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+            </div>
+
+          </div><!-- /LEFT COLUMN -->
+
+          <!-- RIGHT COLUMN -->
+          <div class="modal-col">
+
+            <!-- Location -->
+            <div>
+              <label class="modal-field-label">Localização</label>
+              <div class="modal-input-with-icon" style="margin-bottom:10px">
+                <span class="material-symbols-outlined">search</span>
+                <input id="location-search" type="text" class="modal-input" placeholder="Buscar endereço..." />
+              </div>
+              <!-- Mini map -->
+              <div style="position:relative">
+                <div id="mini-map"
+                  style="height:176px;border-radius:12px;overflow:hidden;background:var(--surface-high);border:1px solid rgba(255,255,255,0.07)">
+                  <div
+                    style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:1">
+                    <span id="mini-map-pin-icon" class="material-symbols-outlined"
+                      style="font-size:36px;color:var(--primary);filter:drop-shadow(0 0 10px rgba(249,115,22,0.5));font-variation-settings:'FILL' 1">location_on</span>
+                  </div>
+                </div>
+                <div id="mini-map-badge" style="position:absolute;bottom:10px;left:10px;z-index:2;display:none">
+                  <div class="glass-panel"
+                    style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:9999px;font-size:10px;color:#fff;font-weight:700">
+                    <span
+                      style="width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse 1.2s ease-in-out infinite;display:inline-block"></span>
+                    SELEÇÃO ATUAL
+                  </div>
+                </div>
+              </div>
+              <button type="button" id="btn-use-current-location"
+                style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--surface-high);border:1px solid var(--outline);border-radius:10px;padding:9px;color:var(--on-surface-variant);font-size:13px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:color 0.15s,background 0.15s">
+                <span class="material-symbols-outlined" style="font-size:15px">my_location</span>
+                Usar minha localização
+              </button>
+              <input type="hidden" name="lat" id="selected-lat" />
+              <input type="hidden" name="lng" id="selected-lng" />
+              <p class="form-error" id="location-error" style="display:none"></p>
+            </div>
+
+            <!-- Address (auto-filled) -->
+            <div>
+              <label class="modal-field-label">Endereço</label>
+              <input name="address" type="text" class="modal-input" placeholder="Preenchido automaticamente..." />
+            </div>
+
+            <!-- Neighborhood -->
+            <div>
+              <label class="modal-field-label">Bairro</label>
+              <input name="neighborhood" type="text" class="modal-input" placeholder="Ex: Moinhos de Vento" />
+            </div>
+
+            <!-- Is free toggle -->
+            <div class="toggle-card">
+              <div class="toggle-label">
+                <span class="material-symbols-outlined">confirmation_number</span>
+                É gratuito?
+              </div>
+              <label class="toggle-switch">
+                <input id="form-toggle-free" type="checkbox" name="is_free" checked />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+
+            <!-- Price info (shown when not free) -->
+            <div id="price-info-field" style="display:none">
+              <label class="modal-field-label">Informações de Preço</label>
+              <input name="price_info" type="text" class="modal-input" placeholder="Ex: R$ 50, meia pra estudantes" />
+            </div>
+
+            <!-- Links -->
+            <div>
+              <label class="modal-field-label">Link do Ingresso</label>
+              <div class="modal-input-with-icon">
+                <span class="material-symbols-outlined">link</span>
+                <input name="ticket_url" type="url" class="modal-input" placeholder="https://sympla.com.br/..." />
+              </div>
+            </div>
+            <div>
+              <label class="modal-field-label">Instagram</label>
+              <div class="modal-input-with-icon">
+                <span class="material-symbols-outlined">alternate_email</span>
+                <input name="instagram_url" type="url" class="modal-input" placeholder="https://instagram.com/..." />
+              </div>
+            </div>
+
+            <!-- Capacity -->
+            <div>
+              <label class="modal-field-label">Capacidade (opcional)</label>
+              <input name="max_capacity" type="number" min="1" class="modal-input" placeholder="Ex: 500" />
+            </div>
+
+          </div><!-- /RIGHT COLUMN -->
+
+        </div><!-- /.modal-body -->
+
+        <!-- Global form error -->
+        <div id="form-error-global"
+          style="display:none;margin:0 32px 16px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 16px;font-size:13px;color:#fca5a5">
+        </div>
+
       </form>
-    </div>
-  </div>
+
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <div class="modal-progress">
+          <span class="progress-step">Passo 01 / 02</span>
+          <div class="progress-bar">
+            <div class="progress-segment active"></div>
+            <div class="progress-segment"></div>
+          </div>
+          <div class="float-filter-sep"></div>
+          <span class="progress-desc">Detalhes &amp; Localização</span>
+          <span style="font-size:11px;color:var(--on-surface-variant);opacity:0.5;margin-left:8px">Rascunho
+            salvo.</span>
+        </div>
+        <button type="submit" form="form-create-event" id="btn-submit-event" class="btn-publish">
+          <span id="submit-spinner" style="display:none" class="material-symbols-outlined animate-spin">sync</span>
+          <span class="material-symbols-outlined">push_pin</span>
+          <span id="submit-label">PUBLICAR EVENTO NO MAPA</span>
+        </button>
+      </div>
+
+    </div><!-- /#modal-create-event -->
+  </div><!-- /#modal-overlay -->
 
   <!-- ============================================================ -->
   <!-- Toast notifications                                           -->
   <!-- ============================================================ -->
-  <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2"></div>
+  <div id="toast-container"></div>
 
   <!-- ============================================================ -->
   <!-- Scripts (ES Modules)                                          -->
@@ -314,7 +795,13 @@
   <script type="module" src="src/pins.js"></script>
   <script type="module" src="src/events.js"></script>
   <script type="module" src="src/filters.js"></script>
+  <script type="module" src="src/weather.js"></script>
+  <script type="module" src="src/saved.js"></script>
+  <script type="module" src="src/activity.js"></script>
+  <script type="module" src="src/settings.js"></script>
+  <script type="module" src="src/profile.js"></script>
   <script type="module" src="src/app.js"></script>
 
 </body>
+
 </html>

@@ -217,6 +217,25 @@ class EventViewSet(ModelViewSet):
         serializer = EventGeoSerializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    def saved(self, request):
+        """GET /api/events/saved/ — eventos que o usuário marcou como SAVED."""
+        saved_ids = EventInteraction.objects.filter(
+            user=request.user,
+            interaction_type=EventInteraction.InteractionType.SAVED,
+        ).values_list("event_id", flat=True)
+        qs = (
+            Event.objects.filter(
+                id__in=saved_ids,
+                deleted_at__isnull=True,
+            )
+            .select_related("category", "city")
+            .prefetch_related("tags", "interactions")
+            .order_by("-created_at")
+        )
+        serializer = EventGeoSerializer(qs, many=True, context=self.get_serializer_context())
+        return Response(serializer.data)
+
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def interact(self, request, pk=None):
         """

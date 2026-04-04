@@ -23,6 +23,7 @@ media/
 .env
 .env.local
 .env.*.local
+.history
 
 # ---- Docker ----
 .docker/

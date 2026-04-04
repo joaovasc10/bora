@@ -3,8 +3,8 @@
  */
 
 import { apiFetch, isLoggedIn, showToast } from "./auth.js";
-import { flyToEvent, updateMapSource } from "./map.js";
-import { renderPins, normaliseProps } from "./pins.js";
+import { flyToEvent, updateMapSource, getMap } from "./map.js";
+import { renderPins, normaliseProps, getCategoryIcon } from "./pins.js";
 
 const API_BASE = "/api";
 
@@ -91,207 +91,362 @@ export async function loadAndRenderEvents() {
 }
 
 // ----------------------------------------------------------------
-// Open event detail in right sidebar
+// Open event detail — floating tooltip card
 // ----------------------------------------------------------------
+let _activePin = null;
+
 export function openEventDetail(rawData, coords) {
-  const sidebar = document.getElementById("sidebar-right");
-  const content = document.getElementById("event-detail-content");
-  if (!sidebar || !content) return;
-
-  // Always normalise — data may come from GeoJSON props (strings) or direct API (objects)
   const p = normaliseProps(rawData);
+  if (!p.id && rawData.id) p.id = rawData.id;
 
-  const counts = p.interaction_counts || {};
-  const tags = Array.isArray(p.tags) ? p.tags : [];
   const eventId = p.id;
-
   if (!eventId) {
     console.error("openEventDetail: missing event id", rawData);
     return;
   }
 
-  // Show sidebar — force via both class removal and inline style
-  sidebar.classList.remove("translate-x-full");
-  sidebar.style.transform = "translateX(0)";
+  if (_activePin) _activePin.classList.remove("active");
+
+  const card = document.getElementById("event-detail-card");
+  if (!card) return;
+
+  const now = new Date();
+  const start = p.start_datetime ? new Date(p.start_datetime) : null;
+  const end = p.end_datetime ? new Date(p.end_datetime) : null;
+  const isLive = start && end && now >= start && now <= end;
+  const addr = p.address || p.neighborhood || "Porto Alegre";
+  const iconName = getCategoryIcon(p.category?.slug || p.category?.name || "");
+
+  card.innerHTML = `
+    <div class="event-card-inner">
+      <div class="event-card-cover">
+        ${p.cover_image_url
+      ? `<img src="${p.cover_image_url}" alt="${p.title || ""}" />`
+      : `<div style="width:100%;height:100%;background:linear-gradient(135deg,rgba(249,115,22,0.15),rgba(249,115,22,0.04));display:flex;align-items:center;justify-content:center">
+               <span class="material-symbols-outlined" style="font-size:44px;color:var(--primary);opacity:0.4;font-variation-settings:'FILL' 1">${iconName}</span>
+             </div>`
+    }
+        ${isLive ? `<span class="event-card-live-badge">LIVE</span>` : ""}
+        <button id="btn-close-detail"
+          style="position:absolute;top:8px;right:8px;width:28px;height:28px;background:rgba(0,0,0,0.65);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(4px)">
+          <span class="material-symbols-outlined" style="font-size:14px">close</span>
+        </button>
+      </div>
+      <div class="event-card-body">
+        <h3 class="event-card-title">${p.title || ""}</h3>
+        <div class="event-card-location">
+          <span class="material-symbols-outlined">location_on</span>
+          ${addr}
+        </div>
+        <button class="btn-view-detail" id="btn-view-detail-cta">
+          <span class="material-symbols-outlined" style="font-size:15px">open_in_full</span>
+          Ver detalhes
+        </button>
+      </div>
+    </div>
+    <div class="event-card-arrow"></div>
+  `;
+
+  card.classList.add("visible");
+  _positionEventCard(card, coords);
+
+  card.querySelector("#btn-close-detail")?.addEventListener("click", closeEventDetail);
+  card.querySelector("#btn-view-detail-cta")?.addEventListener("click", () => {
+    showFullEventDetail(rawData, coords);
+  });
+
+  if (coords?.length === 2) flyToEvent(coords);
+}
+
+function _positionEventCard(card, coords) {
+  if (!coords || coords.length < 2) return;
+  const map = getMap();
+  if (!map) return;
+  try {
+    const point = map.project([coords[0], coords[1]]);
+    const mapArea = document.getElementById("map-area");
+    const cardW = 268, cardH = 310, margin = 12;
+    let left = Math.round(point.x - cardW / 2);
+    let top = Math.round(point.y - cardH - 24);
+    const areaW = mapArea?.offsetWidth || 800;
+    const areaH = mapArea?.offsetHeight || 600;
+    left = Math.max(margin, Math.min(left, areaW - cardW - margin));
+    top = Math.max(margin, Math.min(top, areaH - cardH - margin));
+    card.style.left = left + "px";
+    card.style.top = top + "px";
+    card.style.transform = "";
+  } catch (e) {
+    card.style.left = "50%";
+    card.style.top = "60px";
+    card.style.transform = "translateX(-50%)";
+  }
+}
+
+export function showFullEventDetail(rawData, coords) {
+  const panel = document.getElementById("event-full-panel");
+  if (!panel) return;
+
+  const p = normaliseProps(rawData);
+  if (!p.id && rawData.id) p.id = rawData.id;
+  const eventId = p.id;
+  const counts = p.interaction_counts || {};
+  const tags = Array.isArray(p.tags) ? p.tags : [];
+  const iconName = getCategoryIcon(p.category?.slug || p.category?.name || "");
 
   const formatDate = (iso) => {
     if (!iso) return "";
     return new Date(iso).toLocaleString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
     });
   };
 
-  content.innerHTML = `
-    <div class="relative">
-      <div class="w-full h-24 bg-gradient-to-r from-orange-900/40 to-orange-800/40 flex items-center justify-center text-4xl">${p.category?.icon || "📍"}</div>
-      <button id="btn-close-detail"
-        class="absolute top-2 right-2 w-8 h-8 bg-gray-900/80 rounded-full flex items-center justify-center text-gray-300 hover:text-white transition">
-        ✕
+  panel.innerHTML = `
+    <div style="position:relative">
+      <div style="height:200px;background:linear-gradient(135deg,rgba(249,115,22,0.2),rgba(249,115,22,0.04));display:flex;align-items:center;justify-content:center">
+        ${p.cover_image_url
+      ? `<img src="${p.cover_image_url}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" alt="" />`
+      : `<span class="material-symbols-outlined" style="font-size:56px;color:var(--primary);opacity:0.3;font-variation-settings:'FILL' 1">${iconName}</span>`
+    }
+      </div>
+      <button id="btn-close-full-detail"
+        style="position:absolute;top:12px;right:12px;width:32px;height:32px;background:rgba(0,0,0,0.65);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;z-index:2;backdrop-filter:blur(6px)">
+        <span class="material-symbols-outlined" style="font-size:16px">close</span>
       </button>
-      ${
-        p.is_free
-          ? `<span class="absolute top-2 left-2 bg-green-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Gratuito</span>`
-          : `<span class="absolute top-2 left-2 bg-yellow-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Pago</span>`
-      }
+      ${p.is_free
+      ? `<span style="position:absolute;top:12px;left:12px;background:#16A34A;color:#fff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;padding:3px 10px;border-radius:9999px">Gratuito</span>`
+      : `<span style="position:absolute;top:12px;left:12px;background:#D97706;color:#fff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;padding:3px 10px;border-radius:9999px">Pago</span>`
+    }
     </div>
 
-    <div class="p-4 space-y-3">
-      <div>
-        <h2 class="text-lg font-bold leading-tight">${p.title || ""}</h2>
-        <p class="text-sm text-gray-400">por <strong>${p.organizer_name || ""}</strong></p>
+    <div style="padding:20px">
+      <h2 style="font-size:20px;font-weight:900;letter-spacing:-0.02em;color:var(--on-surface);margin:0 0 4px">${p.title || ""}</h2>
+      ${p.organizer_name ? `<p style="font-size:13px;color:var(--on-surface-variant);margin:0 0 16px">por <strong style="color:var(--on-surface)">${p.organizer_name}</strong></p>` : ""}
+
+      ${p.start_datetime ? `
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--on-surface-variant);margin-bottom:10px">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);font-variation-settings:'FILL' 1">calendar_today</span>
+          ${formatDate(p.start_datetime)}${p.end_datetime ? ` &rarr; ${formatDate(p.end_datetime)}` : ""}
+        </div>` : ""}
+
+      ${(p.address || p.neighborhood) ? `
+        <div style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--on-surface-variant);margin-bottom:16px">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);font-variation-settings:'FILL' 1">location_on</span>
+          ${p.address || ""}${p.neighborhood ? `, ${p.neighborhood}` : ""}
+        </div>` : ""}
+
+      ${p.description ? `<p style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;margin-bottom:16px">${p.description}</p>` : ""}
+      ${p.price_info && !p.is_free ? `<p style="font-size:13px;color:#F59E0B;margin-bottom:12px">${p.price_info}</p>` : ""}
+
+      ${tags.length > 0 ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+          ${tags.map(t => `<span class="event-tag">#${t.name || t}</span>`).join("")}
+        </div>` : ""}
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        ${p.instagram_url ? `
+          <a href="${p.instagram_url}" target="_blank" rel="noopener"
+            style="display:flex;align-items:center;gap:5px;font-size:12px;background:var(--surface-high);color:var(--on-surface-variant);padding:7px 12px;border-radius:9px;text-decoration:none">
+            <span class="material-symbols-outlined" style="font-size:14px">photo_camera</span> Instagram
+          </a>` : ""}
+        ${p.ticket_url ? `
+          <a href="${p.ticket_url}" target="_blank" rel="noopener"
+            style="display:flex;align-items:center;gap:5px;font-size:12px;background:var(--primary);color:#fff;padding:7px 12px;border-radius:9px;text-decoration:none">
+            <span class="material-symbols-outlined" style="font-size:14px">confirmation_number</span> Ingressos
+          </a>` : ""}
       </div>
 
-      ${
-        p.start_datetime
-          ? `<div class="flex items-center gap-2 text-sm text-gray-300">
-               🗓️ <span>${formatDate(p.start_datetime)}${p.end_datetime ? ` → ${formatDate(p.end_datetime)}` : ""}</span>
-             </div>`
-          : ""
-      }
-
-      ${
-        p.address
-          ? `<div class="flex items-start gap-2 text-sm text-gray-300">
-               📍 <span>${p.address}${p.neighborhood ? `, ${p.neighborhood}` : ""}</span>
-             </div>`
-          : ""
-      }
-
-      ${p.description ? `<p class="text-sm text-gray-300 leading-relaxed">${p.description}</p>` : ""}
-
-      ${p.price_info && !p.is_free ? `<p class="text-sm text-yellow-400">💰 ${p.price_info}</p>` : ""}
-
-      ${
-        tags.length > 0
-          ? `<div class="flex flex-wrap gap-1">${tags
-              .map((t) => `<span class="event-tag">#${t.name || t}</span>`)
-              .join("")}</div>`
-          : ""
-      }
-
-      <div class="flex gap-2 flex-wrap">
-        ${
-          p.instagram_url
-            ? `<a href="${p.instagram_url}" target="_blank" rel="noopener"
-                class="text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg text-gray-300 transition">
-                📸 Instagram</a>`
-            : ""
-        }
-        ${
-          p.ticket_url
-            ? `<a href="${p.ticket_url}" target="_blank" rel="noopener"
-                class="text-xs bg-brand hover:bg-brand-dark px-3 py-1.5 rounded-lg text-white transition">
-                🎟️ Ingressos</a>`
-            : ""
-        }
-      </div>
-
-      <div class="flex gap-2 flex-wrap text-sm">
-        <button data-action="GOING" data-event-id="${eventId}"
-          class="interaction-btn flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-green-900 rounded-lg text-gray-400 hover:text-green-400 transition">
-          🙋 Vou (${counts.GOING || 0})
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+        <button data-action="GOING" data-event-id="${eventId}" class="interaction-btn"
+          style="display:flex;align-items:center;gap:5px;font-size:12px;padding:8px 13px;background:var(--surface-high);border:1px solid var(--outline);border-radius:9px;color:var(--on-surface-variant);cursor:pointer;font-family:inherit">
+          <span class="material-symbols-outlined" style="font-size:14px">waving_hand</span> Vou (${counts.GOING || 0})
         </button>
-        <button data-action="INTERESTED" data-event-id="${eventId}"
-          class="interaction-btn flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-yellow-900 rounded-lg text-gray-400 hover:text-yellow-400 transition">
-          ⭐ Interessado (${counts.INTERESTED || 0})
+        <button data-action="INTERESTED" data-event-id="${eventId}" class="interaction-btn"
+          style="display:flex;align-items:center;gap:5px;font-size:12px;padding:8px 13px;background:var(--surface-high);border:1px solid var(--outline);border-radius:9px;color:var(--on-surface-variant);cursor:pointer;font-family:inherit">
+          <span class="material-symbols-outlined" style="font-size:14px">star</span> Interessado (${counts.INTERESTED || 0})
         </button>
-        <button data-action="SAVED" data-event-id="${eventId}"
-          class="interaction-btn flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-blue-900 rounded-lg text-gray-400 hover:text-blue-400 transition">
-          🔖 Salvar (${counts.SAVED || 0})
+        <button data-action="SAVED" data-event-id="${eventId}" class="interaction-btn"
+          style="display:flex;align-items:center;gap:5px;font-size:12px;padding:8px 13px;background:var(--surface-high);border:1px solid var(--outline);border-radius:9px;color:var(--on-surface-variant);cursor:pointer;font-family:inherit">
+          <span class="material-symbols-outlined" style="font-size:14px">bookmark</span> Salvar (${counts.SAVED || 0})
         </button>
       </div>
 
-      <div class="flex gap-2">
-        <button data-action="REPORTED" data-event-id="${eventId}"
-          class="interaction-btn text-xs flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-red-900 rounded-lg text-gray-500 hover:text-red-400 transition">
-          🚩 Denunciar
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button data-action="REPORTED" data-event-id="${eventId}" class="interaction-btn"
+          style="display:flex;align-items:center;gap:5px;font-size:11px;padding:7px 11px;background:var(--surface-high);border:1px solid var(--outline);border-radius:9px;color:var(--on-surface-variant);cursor:pointer;font-family:inherit">
+          <span class="material-symbols-outlined" style="font-size:13px">flag</span> Denunciar
         </button>
-        <button class="share-btn text-xs flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-500 hover:text-gray-300 transition">
-          🔗 Compartilhar
+        <button class="share-btn"
+          style="display:flex;align-items:center;gap:5px;font-size:11px;padding:7px 11px;background:var(--surface-high);border:1px solid var(--outline);border-radius:9px;color:var(--on-surface-variant);cursor:pointer;font-family:inherit">
+          <span class="material-symbols-outlined" style="font-size:13px">share</span> Compartilhar
         </button>
-        <button id="btn-delete-event" data-event-id="${eventId}"
-          class="delete-btn text-xs flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-red-900 rounded-lg text-gray-500 hover:text-red-400 transition hidden">
-          🗑️ Deletar
-        </button>
+        ${isLoggedIn() ? `
+          <button id="btn-delete-event" data-event-id="${eventId}"
+            style="display:flex;align-items:center;gap:5px;font-size:11px;padding:7px 11px;background:var(--surface-high);border:1px solid var(--outline);border-radius:9px;color:var(--on-surface-variant);cursor:pointer;font-family:inherit">
+            <span class="material-symbols-outlined" style="font-size:13px">delete</span> Deletar
+          </button>` : ""}
       </div>
     </div>
   `;
 
-  // Close button
-  content.querySelector("#btn-close-detail")?.addEventListener("click", closeEventDetail);
+  panel.classList.add("open");
 
-  // Interaction buttons
-  content.querySelectorAll(".interaction-btn").forEach((btn) => {
+  panel.querySelector("#btn-close-full-detail")?.addEventListener("click", () => {
+    panel.classList.remove("open");
+  });
+
+  panel.querySelectorAll(".interaction-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!isLoggedIn()) {
-        showToast("Faça login para interagir com o evento.", "info");
-        return;
-      }
+      if (!isLoggedIn()) { showToast("Faça login para interagir.", "info"); return; }
       const action = btn.dataset.action;
       const id = btn.dataset.eventId;
-      if (!id || id === "undefined") {
-        showToast("Erro: ID do evento inválido.", "error");
-        return;
-      }
+      if (!id || id === "undefined") { showToast("Erro: ID inválido.", "error"); return; }
       await handleInteraction(id, action);
     });
   });
 
-  // Share button
-  content.querySelector(".share-btn")?.addEventListener("click", () => {
+  panel.querySelector(".share-btn")?.addEventListener("click", () => {
     const url = `${window.location.origin}/events/${eventId}/`;
-    navigator.clipboard
-      ?.writeText(url)
+    navigator.clipboard?.writeText(url)
       .then(() => showToast("Link copiado!", "success"))
       .catch(() => showToast(url, "info"));
   });
 
-  // Delete button (only show if owner and logged in)
-  const deleteBtn = content.querySelector("#btn-delete-event");
-  async function handleDeleteEvent() {
+  const deleteBtn = panel.querySelector("#btn-delete-event");
+  deleteBtn?.addEventListener("click", async () => {
     if (!confirm("Tem certeza que deseja deletar este evento?")) return;
-    
     try {
       const resp = await apiFetch(`/api/events/${eventId}/`, { method: "DELETE" });
       if (resp.status === 204 || resp.ok) {
-        showToast("Evento deletado com sucesso!", "success");
+        showToast("Evento deletado!", "success");
         closeEventDetail();
         await loadAndRenderEvents();
       } else {
-        showToast("Erro ao deletar evento.", "error");
+        showToast("Erro ao deletar.", "error");
       }
-    } catch (err) {
-      console.error("Delete error:", err);
-      showToast("Erro ao deletar evento.", "error");
+    } catch (e) {
+      showToast("Erro ao deletar.", "error");
     }
-  }
-  
-  if (deleteBtn) {
-    deleteBtn.addEventListener("click", handleDeleteEvent);
-    // Show delete button only if user is logged in and is the owner
-    // Since we don't have organizer_user_id in the response, we'll make an attempt
-    // and the backend will return 403 if not authorized
-    if (isLoggedIn()) {
-      deleteBtn.classList.remove("hidden");
-    }
-  }
-
-  // Fly to event location
-  if (coords?.length === 2) flyToEvent(coords);
+  });
 }
 
 // ----------------------------------------------------------------
-// Close right sidebar
+// Close event detail (card + full panel)
 // ----------------------------------------------------------------
 export function closeEventDetail() {
-  const sidebar = document.getElementById("sidebar-right");
-  if (!sidebar) return;
-  sidebar.classList.add("translate-x-full");
-  sidebar.style.transform = "";
+  const card = document.getElementById("event-detail-card");
+  const panel = document.getElementById("event-full-panel");
+  card?.classList.remove("visible");
+  panel?.classList.remove("open");
+  if (_activePin) { _activePin.classList.remove("active"); _activePin = null; }
+}
+
+// ----------------------------------------------------------------
+// Load events for Explore view bento grid
+// ----------------------------------------------------------------
+export async function loadExploreEvents() {
+  const grid = document.getElementById("explore-grid");
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <div style="grid-column:span 3;text-align:center;padding:64px 0;color:var(--on-surface-variant)">
+      <span class="material-symbols-outlined" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3">hourglass_empty</span>
+      Carregando eventos...
+    </div>`;
+
+  const geojson = await fetchEvents();
+  const features = (geojson.features || []).slice(0, 8);
+
+  if (features.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column:span 3;text-align:center;padding:64px 0;color:var(--on-surface-variant)">
+        <span class="material-symbols-outlined" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3">event_busy</span>
+        Nenhum evento encontrado.
+      </div>`;
+    return;
+  }
+
+  const formatShort = (iso) => {
+    if (!iso) return "";
+    return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const hero = features[0];
+  const rest = features.slice(1);
+  const hp = normaliseProps(hero.properties || {});
+  if (!hp.id && hero.id) hp.id = hero.id;
+
+  const heroCard = `
+    <div class="card-hero" id="explore-hero-card">
+      ${hp.cover_image_url
+      ? `<img class="card-hero-img" src="${hp.cover_image_url}" alt="${hp.title || ""}" />`
+      : `<div class="card-hero-img" style="background:linear-gradient(135deg,rgba(249,115,22,0.25),rgba(249,115,22,0.05))"></div>`
+    }
+      <div class="card-hero-overlay"></div>
+      <div class="card-hero-badges">
+        <span class="badge-featured">Destaque</span>
+        ${hp.is_free ? `<span class="badge-free">Entrada Franca</span>` : ""}
+      </div>
+      <div class="card-hero-content">
+        <p class="card-hero-location">${hp.neighborhood || hp.category?.name || "Porto Alegre"}</p>
+        <h3 class="card-hero-title">${hp.title || ""}</h3>
+        <div class="card-hero-meta">
+          ${hp.start_datetime ? `<span><span class="material-symbols-outlined">schedule</span> ${formatShort(hp.start_datetime)}</span>` : ""}
+        </div>
+      </div>
+      <button class="card-hero-cta">
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </button>
+    </div>
+  `;
+
+  const secondaryCards = rest.map((f) => {
+    const ep = normaliseProps(f.properties || {});
+    if (!ep.id && f.id) ep.id = f.id;
+    const iconName = getCategoryIcon(ep.category?.slug || ep.category?.name || "");
+    return `
+      <div class="card-secondary" data-event-id="${ep.id}">
+        <div class="card-secondary-img-wrap">
+          ${ep.cover_image_url
+        ? `<img class="card-secondary-img" src="${ep.cover_image_url}" alt="${ep.title || ""}" />`
+        : `<div class="card-secondary-img-placeholder">
+                 <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);opacity:0.3;font-variation-settings:'FILL' 1">${iconName}</span>
+               </div>`
+      }
+          ${ep.category?.name ? `<span class="card-secondary-cat-badge">${ep.category.name}</span>` : ""}
+        </div>
+        <div class="card-secondary-body">
+          <h4 class="card-secondary-title">${ep.title || ""}</h4>
+          ${ep.address || ep.neighborhood ? `
+            <div class="card-secondary-distance">
+              <span class="material-symbols-outlined">map</span>
+              ${ep.address || ep.neighborhood}
+            </div>` : ""}
+          ${ep.description ? `<p class="card-secondary-desc">${ep.description}</p>` : ""}
+          <div class="card-secondary-footer">
+            <span class="card-price">${ep.is_free ? "Grátis" : (ep.price_info || "Pago")}</span>
+            <span class="card-date">${formatShort(ep.start_datetime)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  grid.innerHTML = heroCard + secondaryCards;
+
+  // Hero card click
+  grid.querySelector("#explore-hero-card")?.addEventListener("click", () => {
+    showFullEventDetail(hero.properties, hero.geometry?.coordinates);
+  });
+
+  // Secondary card clicks
+  grid.querySelectorAll(".card-secondary").forEach((card, i) => {
+    card.addEventListener("click", () => {
+      const f = rest[i];
+      if (!f) return;
+      showFullEventDetail(f.properties, f.geometry?.coordinates);
+    });
+  });
 }
 
 // ----------------------------------------------------------------
@@ -340,7 +495,7 @@ export function initCreateEventModal(categories, cityId) {
     }
     modal.classList.add("open");
     initMiniMap();
-    populateCategorySelect(categories);
+    populateCategoryChips(categories);
   });
 
   btnClose?.addEventListener("click", () => modal.classList.remove("open"));
@@ -435,16 +590,27 @@ function renderTags() {
   });
 }
 
-function populateCategorySelect(categories) {
-  const select = document.querySelector("[name=category]");
-  if (!select) return;
-  select.innerHTML = '<option value="">Selecione uma categoria...</option>';
-  for (const cat of categories) {
-    const opt = document.createElement("option");
-    opt.value = cat.id;
-    opt.textContent = `${cat.icon} ${cat.name}`;
-    select.appendChild(opt);
-  }
+function populateCategoryChips(categories) {
+  const chipsContainer = document.getElementById("modal-category-chips");
+  const hiddenInput = document.getElementById("modal-category-value");
+  if (!chipsContainer) return;
+
+  chipsContainer.innerHTML = categories.map((cat) => {
+    const iconName = getCategoryIcon(cat.slug || cat.name || "");
+    return `
+      <button type="button" class="category-chip" data-cat-id="${cat.id}" data-cat-name="${cat.name || ""}">
+        <span class="material-symbols-outlined">${iconName}</span>
+        ${cat.name}
+      </button>`;
+  }).join("");
+
+  chipsContainer.querySelectorAll(".category-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      chipsContainer.querySelectorAll(".category-chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      if (hiddenInput) hiddenInput.value = chip.dataset.catId;
+    });
+  });
 }
 
 function initMiniMap() {
@@ -610,7 +776,7 @@ async function submitCreateEvent(form, modal, cityId) {
       // Extract and display validation errors by field
       const errors = data || {};
       const errorMessages = [];
-      
+
       // Build human-readable error list
       for (const [field, msgs] of Object.entries(errors)) {
         const msgList = Array.isArray(msgs) ? msgs : [msgs];
@@ -618,7 +784,7 @@ async function submitCreateEvent(form, modal, cityId) {
           errorMessages.push(msg);
         });
       }
-      
+
       if (globalErr) {
         if (errorMessages.length > 0) {
           globalErr.innerHTML = errorMessages

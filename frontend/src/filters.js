@@ -1,9 +1,10 @@
 /**
  * filters.js — Sidebar filter controls (categories, date, free-only, search)
- * Renders category checkboxes dynamically from the API and calls loadAndRenderEvents.
+ * Renders category items dynamically from the API and calls loadAndRenderEvents.
  */
 
 import { loadAndRenderEvents, filters } from "./events.js";
+import { getCategoryIcon } from "./pins.js";
 
 const API_BASE = "/api";
 
@@ -26,40 +27,38 @@ export async function fetchCategories() {
 }
 
 // ----------------------------------------------------------------
-// Render category filter checkboxes
+// Render category filter items
 // ----------------------------------------------------------------
 export function renderCategoryFilters(categories) {
   const container = document.getElementById("category-filters");
   if (!container) return;
 
   if (categories.length === 0) {
-    container.innerHTML = '<p class="text-xs text-gray-500">Nenhuma categoria encontrada.</p>';
+    container.innerHTML = '<p style="font-size:12px;color:var(--on-surface-variant);padding:8px 0">Nenhuma categoria encontrada.</p>';
     return;
   }
 
   container.innerHTML = categories
     .map(
       (cat) => `
-      <label class="flex items-center gap-2 cursor-pointer py-1 hover:bg-gray-800 rounded-lg px-1 transition group">
-        <input type="checkbox" value="${cat.slug}"
-          class="category-checkbox w-4 h-4 rounded accent-blue-500 cursor-pointer" />
-        <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-xs"
-          style="background-color: ${cat.color_hex}20; border: 1.5px solid ${cat.color_hex}">
-          ${cat.icon}
-        </span>
-        <span class="text-sm text-gray-300 group-hover:text-white transition truncate">${cat.name}</span>
-      </label>
+      <div class="category-item" data-slug="${cat.slug}" title="${cat.name}">
+        <span class="material-symbols-outlined">${getCategoryIcon(cat.slug || cat.name || "")}</span>
+        <span class="cat-name">${cat.name}</span>
+      </div>
     `
     )
     .join("");
 
-  // Attach change listeners
-  container.querySelectorAll(".category-checkbox").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      const checked = [...container.querySelectorAll(".category-checkbox:checked")].map(
-        (el) => el.value
+  container.querySelectorAll(".category-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const isActive = item.classList.contains("active");
+      // Toggle this category
+      item.classList.toggle("active", !isActive);
+
+      const active = [...container.querySelectorAll(".category-item.active")].map(
+        (el) => el.dataset.slug
       );
-      filters.categories = checked;
+      filters.categories = active;
       loadAndRenderEvents();
     });
   });

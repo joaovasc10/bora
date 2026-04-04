@@ -138,7 +138,7 @@ export async function logout() {
     await apiFetch(`${API_BASE}/auth/logout/`, {
       method: "POST",
       body: JSON.stringify({ refresh }),
-    }).catch(() => {});
+    }).catch(() => { });
   }
   clearTokens();
   renderAuthSection();
@@ -157,93 +157,129 @@ export async function loadCurrentUser() {
 }
 
 // ----------------------------------------------------------------
-// Render auth section in sidebar
+// Render auth section in sidebar + update nav avatar
 // ----------------------------------------------------------------
 function renderAuthSection() {
   const container = document.getElementById("auth-section");
-  if (!container) return;
+  const navAvatar = document.getElementById("side-nav-avatar");
 
   const user = getCurrentUser();
 
   if (user) {
     const name = user.first_name || user.email.split("@")[0];
     const avatar = user.profile?.avatar_url;
+    const initial = name[0].toUpperCase();
 
-    container.innerHTML = `
-      <div class="flex items-center gap-2 mb-2">
-        ${avatar
-          ? `<img src="${avatar}" class="w-8 h-8 rounded-full object-cover" alt="Avatar" />`
-          : `<div class="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-sm font-bold">${name[0].toUpperCase()}</div>`
+    // Update side-nav avatar
+    if (navAvatar) {
+      navAvatar.innerHTML = avatar
+        ? `<img src="${avatar}" alt="Avatar" />`
+        : `<span style="font-size:15px;font-weight:700;color:var(--on-surface)">${initial}</span>`;
+    }
+
+    if (container) {
+      container.innerHTML = `
+        <div class="auth-user-row">
+          <div class="auth-avatar">
+            ${avatar
+          ? `<img src="${avatar}" alt="Avatar" />`
+          : `<span style="font-size:13px;font-weight:700">${initial}</span>`
         }
-        <div class="min-w-0">
-          <p class="text-sm font-medium truncate">${name}</p>
-          <p class="text-xs text-gray-400 truncate">${user.email}</p>
+          </div>
+          <div style="min-width:0">
+            <p class="auth-user-name">${name}</p>
+            <p class="auth-user-email">${user.email}</p>
+          </div>
         </div>
-      </div>
-      <button id="btn-my-events"
-        class="w-full text-left text-sm px-3 py-1.5 rounded-lg hover:bg-gray-800 transition text-gray-300 flex items-center gap-2">
-        🗓️ Meus eventos
-      </button>
-      <button id="btn-logout"
-        class="w-full text-left text-sm px-3 py-1.5 rounded-lg hover:bg-gray-800 transition text-gray-400 flex items-center gap-2">
-        🚪 Sair
-      </button>
-    `;
+        <button id="btn-my-events" class="auth-action-btn">
+          <span class="material-symbols-outlined">calendar_month</span>
+          Meus eventos
+        </button>
+        <button id="btn-logout" class="auth-action-btn">
+          <span class="material-symbols-outlined">logout</span>
+          Sair
+        </button>
+      `;
 
-    container.querySelector("#btn-logout")?.addEventListener("click", logout);
-    container.querySelector("#btn-my-events")?.addEventListener("click", () => {
-      window.dispatchEvent(new CustomEvent("show:my-events"));
-    });
+      container.querySelector("#btn-logout")?.addEventListener("click", logout);
+      container.querySelector("#btn-my-events")?.addEventListener("click", () => {
+        window.dispatchEvent(new CustomEvent("show:my-events"));
+      });
+    }
   } else {
-    container.innerHTML = `
-      <button id="btn-open-login"
-        class="w-full text-center text-sm px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition text-gray-300 flex items-center justify-center gap-2">
-        🔑 Entrar / Cadastrar
-      </button>
-    `;
-    container.querySelector("#btn-open-login")?.addEventListener("click", showAuthModal);
+    // Reset nav avatar
+    if (navAvatar) {
+      navAvatar.innerHTML = `<span class="material-symbols-outlined" style="font-size:20px;color:var(--on-surface-variant)">person</span>`;
+    }
+
+    if (container) {
+      container.innerHTML = `
+        <button id="btn-open-login" class="btn-login">
+          <span class="material-symbols-outlined" style="font-size:16px">key</span>
+          Entrar / Cadastrar
+        </button>
+      `;
+      container.querySelector("#btn-open-login")?.addEventListener("click", showAuthModal);
+    }
   }
 }
 
 // ----------------------------------------------------------------
-// Simple auth modal (inline, no extra library)
+// Auth modal with new design
 // ----------------------------------------------------------------
-function showAuthModal() {
+export function showAuthModal() {
   const existing = document.getElementById("auth-modal-overlay");
   if (existing) { existing.remove(); return; }
 
   const overlay = document.createElement("div");
   overlay.id = "auth-modal-overlay";
-  overlay.className = "fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(10px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px";
 
   overlay.innerHTML = `
-    <div class="bg-gray-900 rounded-2xl border border-gray-700 w-full max-w-sm shadow-2xl p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold" id="auth-modal-title">Entrar</h2>
-        <button id="auth-modal-close" class="text-gray-400 hover:text-white text-2xl leading-none">×</button>
-      </div>
-
-      <div class="flex gap-2 mb-4">
-        <button id="tab-login" class="flex-1 py-1.5 rounded-lg bg-brand text-white text-sm font-medium">Entrar</button>
-        <button id="tab-register" class="flex-1 py-1.5 rounded-lg bg-gray-800 text-gray-300 text-sm font-medium hover:bg-gray-700 transition">Cadastrar</button>
-      </div>
-
-      <form id="auth-form" class="space-y-3">
-        <input name="email" type="email" required placeholder="E-mail" class="form-input" />
-        <input name="password" type="password" required placeholder="Senha" class="form-input" />
-        <div id="password2-field" class="hidden">
-          <input name="password2" type="password" placeholder="Confirme a senha" class="form-input" />
+    <div style="background:rgba(26,26,26,0.95);backdrop-filter:blur(32px);border-radius:20px;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 60px rgba(0,0,0,0.8);width:100%;max-width:380px;padding:0;overflow:hidden">
+      <div style="padding:24px 28px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h2 id="auth-modal-title" style="font-size:22px;font-weight:900;letter-spacing:-0.02em;color:var(--on-surface);margin:0 0 3px">Entrar</h2>
+          <p style="font-size:13px;color:var(--on-surface-variant);margin:0">Bem-vindo ao Bora</p>
         </div>
-        <div id="auth-error" class="hidden text-sm text-red-400 bg-red-900/40 rounded-lg px-3 py-2"></div>
-        <button type="submit" class="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2 rounded-lg transition">
-          Entrar
+        <button id="auth-modal-close"
+          style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:var(--on-surface-variant);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px">
+          <span class="material-symbols-outlined" style="font-size:18px">close</span>
         </button>
-      </form>
+      </div>
 
-      <div class="mt-4 pt-3 border-t border-gray-700">
-        <a href="/api/auth/google/" class="flex items-center justify-center gap-2 w-full py-2 px-4 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-300 transition">
-          <span>🔵</span> Continuar com Google
-        </a>
+      <div style="padding:20px 28px 24px">
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <button id="tab-login" data-active="true"
+            style="flex:1;padding:9px;border-radius:10px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer">
+            Entrar
+          </button>
+          <button id="tab-register" data-active="false"
+            style="flex:1;padding:9px;border-radius:10px;background:var(--surface-high);color:var(--on-surface-variant);border:none;font-size:13px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:background 0.15s">
+            Cadastrar
+          </button>
+        </div>
+
+        <form id="auth-form" style="display:flex;flex-direction:column;gap:12px">
+          <input name="email" type="email" required placeholder="E-mail" class="modal-input" />
+          <input name="password" type="password" required placeholder="Senha" class="modal-input" />
+          <div id="password2-field" style="display:none">
+            <input name="password2" type="password" placeholder="Confirme a senha" class="modal-input" style="width:100%" />
+          </div>
+          <div id="auth-error" style="display:none;font-size:13px;color:#fca5a5;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:10px 14px"></div>
+          <button type="submit"
+            style="background:linear-gradient(135deg,#FFB690,#F97316);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:transform 0.15s">
+            Entrar
+          </button>
+        </form>
+
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)">
+          <a href="/api/auth/google/"
+            style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:var(--surface-high);border:1px solid var(--outline);border-radius:12px;font-size:13px;color:var(--on-surface-variant);text-decoration:none;transition:background 0.15s;font-family:'Plus Jakarta Sans',sans-serif">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#4285F4">account_circle</span>
+            Continuar com Google
+          </a>
+        </div>
       </div>
     </div>
   `;
@@ -256,29 +292,33 @@ function showAuthModal() {
   const pw2Field = overlay.querySelector("#password2-field");
   const titleEl = overlay.querySelector("#auth-modal-title");
   const submitBtn = form.querySelector("button[type=submit]");
+  const tabLogin = overlay.querySelector("#tab-login");
+  const tabRegister = overlay.querySelector("#tab-register");
 
   overlay.querySelector("#auth-modal-close").addEventListener("click", () => overlay.remove());
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 
   function setMode(m) {
     mode = m;
+    const activeStyle = "flex:1;padding:9px;border-radius:10px;background:var(--primary);color:#fff;border:none;font-size:13px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer";
+    const inactiveStyle = "flex:1;padding:9px;border-radius:10px;background:var(--surface-high);color:var(--on-surface-variant);border:none;font-size:13px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:background 0.15s";
     if (m === "login") {
       titleEl.textContent = "Entrar";
       submitBtn.textContent = "Entrar";
-      pw2Field.classList.add("hidden");
-      overlay.querySelector("#tab-login").className = "flex-1 py-1.5 rounded-lg bg-brand text-white text-sm font-medium";
-      overlay.querySelector("#tab-register").className = "flex-1 py-1.5 rounded-lg bg-gray-800 text-gray-300 text-sm font-medium hover:bg-gray-700 transition";
+      pw2Field.style.display = "none";
+      tabLogin.style.cssText = activeStyle;
+      tabRegister.style.cssText = inactiveStyle;
     } else {
       titleEl.textContent = "Criar conta";
       submitBtn.textContent = "Cadastrar";
-      pw2Field.classList.remove("hidden");
-      overlay.querySelector("#tab-register").className = "flex-1 py-1.5 rounded-lg bg-brand text-white text-sm font-medium";
-      overlay.querySelector("#tab-login").className = "flex-1 py-1.5 rounded-lg bg-gray-800 text-gray-300 text-sm font-medium hover:bg-gray-700 transition";
+      pw2Field.style.display = "block";
+      tabRegister.style.cssText = activeStyle;
+      tabLogin.style.cssText = inactiveStyle;
     }
   }
 
-  overlay.querySelector("#tab-login").addEventListener("click", () => setMode("login"));
-  overlay.querySelector("#tab-register").addEventListener("click", () => setMode("register"));
+  tabLogin.addEventListener("click", () => setMode("login"));
+  tabRegister.addEventListener("click", () => setMode("register"));
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -319,12 +359,13 @@ export function showToast(message, type = "info", duration = 3500) {
   const container = document.getElementById("toast-container");
   if (!container) return;
 
+  const icons = { success: "check_circle", error: "error", info: "info" };
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.innerHTML = `
-    <span>${type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️"}</span>
-    <span class="text-sm flex-1">${message}</span>
-    <button onclick="this.parentElement.remove()" class="text-gray-500 hover:text-white ml-2 text-lg leading-none">×</button>
+    <span class="material-symbols-outlined" style="font-size:18px;flex-shrink:0;color:${type === "success" ? "#22C55E" : type === "error" ? "#EF4444" : "var(--primary)"}">${icons[type] || "info"}</span>
+    <span style="flex:1;font-size:13px">${message}</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--on-surface-variant);cursor:pointer;font-size:18px;line-height:1;padding:0;margin-left:8px">&times;</button>
   `;
 
   container.appendChild(toast);
